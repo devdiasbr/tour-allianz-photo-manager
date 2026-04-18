@@ -4,6 +4,8 @@ import glob
 import json
 import hashlib
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
 import face_recognition
 import cv2
@@ -13,6 +15,7 @@ from app.config import (
     FACE_TOLERANCE, FACE_DETECTION_MODEL, THUMBNAIL_SIZE,
     FACE_SCAN_MAX_WIDTH, FACE_UPSAMPLE,
 )
+from app.services import cache as encoding_cache
 
 log = logging.getLogger(__name__)
 
@@ -20,21 +23,19 @@ log = logging.getLogger(__name__)
 @dataclass
 class MatchResult:
     file_path: str
-    thumbnail_bytes: bytes
+    sha: str
     best_distance: float
     face_locations: list
 
 
 def encode_faces(image_rgb: np.ndarray) -> list[np.ndarray]:
     """Detect and encode all faces in an RGB image (e.g. from webcam)."""
-    # Try with upsample for better detection of smaller faces
     locations = face_recognition.face_locations(
         image_rgb, number_of_times_to_upsample=FACE_UPSAMPLE, model=FACE_DETECTION_MODEL
     )
     if not locations:
         return []
-    encodings = face_recognition.face_encodings(image_rgb, locations)
-    return encodings
+    return face_recognition.face_encodings(image_rgb, locations)
 
 
 def get_face_locations(image_rgb: np.ndarray) -> list[tuple]:
@@ -100,15 +101,6 @@ def enhance_for_detection(image_rgb: np.ndarray) -> np.ndarray:
     return cv2.cvtColor(ycrcb, cv2.COLOR_YCrCb2RGB)
 
 
-def _make_thumbnail(image_path: str) -> bytes:
-    """Create a JPEG thumbnail for grid display."""
-    with Image.open(image_path) as img:
-        img.thumbnail(THUMBNAIL_SIZE, Image.LANCZOS)
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=85)
-    return buf.getvalue()
-
-
 def _resize_for_scan(image: np.ndarray, max_width: int) -> tuple[np.ndarray, float]:
     """Resize image for scanning, return (resized_image, scale_factor)."""
     h, w = image.shape[:2]
@@ -121,12 +113,34 @@ def _resize_for_scan(image: np.ndarray, max_width: int) -> tuple[np.ndarray, flo
     return image, 1.0
 
 
+def _encode_with_cache(
+    image: np.ndarray,
+    locations: list,
+    sha: str,
+    variant: str,
+    stage: str,
+) -> list[np.ndarray]:
+    """Compute face encodings, hitting the disk cache when possible.
+
+    Cache key composes the file sha with the variant/stage so different
+    pipeline branches (base vs clahe, resized vs full) get distinct entries.
+    """
+    cache_key = f"{sha}:{variant}:{stage}"
+    cached = encoding_cache.get_encodings(cache_key)
+    if cached is not None:
+        return cached
+    encs = face_recognition.face_encodings(image, locations)
+    encoding_cache.put_encodings(cache_key, encs)
+    return encs
+
+
 def _scan_variant(
     image: np.ndarray,
     reference_encodings: list[np.ndarray],
     tolerance: float,
     upsample: int,
     variant_name: str,
+    sha: str,
 ) -> dict:
     passes = []
     matched = False
@@ -148,7 +162,7 @@ def _scan_variant(
     final_scale = scale
 
     if locations and reference_encodings:
-        encodings = face_recognition.face_encodings(small, locations)
+        encodings = _encode_with_cache(small, locations, sha, variant_name, "resized")
         for enc in encodings:
             distances = face_recognition.face_distance(reference_encodings, enc)
             min_dist = float(np.min(distances))
@@ -170,7 +184,7 @@ def _scan_variant(
             **diag_full,
         })
         if full_locations and reference_encodings:
-            full_encodings = face_recognition.face_encodings(image, full_locations)
+            full_encodings = _encode_with_cache(image, full_locations, sha, variant_name, "full")
             for enc in full_encodings:
                 distances = face_recognition.face_distance(reference_encodings, enc)
                 min_dist = float(np.min(distances))
@@ -191,6 +205,53 @@ def _scan_variant(
     }
 
 
+def _process_one_photo(
+    photo_path: str,
+    reference_encodings: list[np.ndarray],
+    tolerance: float,
+) -> tuple[str, dict]:
+    """Worker body for a single photo. Returns (photo_path, payload)."""
+    try:
+        image, metadata = load_image_rgb_with_metadata(photo_path)
+        sha12 = hash_file_sha12(photo_path)
+
+        base_result = _scan_variant(
+            image=image,
+            reference_encodings=reference_encodings,
+            tolerance=tolerance,
+            upsample=FACE_UPSAMPLE,
+            variant_name="base",
+            sha=sha12,
+        )
+
+        selected_result = base_result
+        enhanced_result = None
+        has_any_face = any(p["faces_detected"] > 0 for p in base_result["passes"])
+
+        if not base_result["matched"] and not has_any_face:
+            enhanced_image = enhance_for_detection(image)
+            enhanced_result = _scan_variant(
+                image=enhanced_image,
+                reference_encodings=reference_encodings,
+                tolerance=tolerance,
+                upsample=min(FACE_UPSAMPLE + 1, 3),
+                variant_name="clahe",
+                sha=sha12,
+            )
+            if enhanced_result["matched"] or any(p["faces_detected"] > 0 for p in enhanced_result["passes"]):
+                selected_result = enhanced_result
+
+        return photo_path, {
+            "ok": True,
+            "sha": sha12,
+            "metadata": metadata,
+            "selected": selected_result,
+            "passes": base_result["passes"] + ([] if not enhanced_result else enhanced_result["passes"]),
+        }
+    except Exception as e:
+        return photo_path, {"ok": False, "error": str(e)}
+
+
 def scan_session(
     session_path: str,
     reference_encodings: list[np.ndarray],
@@ -200,9 +261,10 @@ def scan_session(
     """Scan all photos in a session folder and return matches.
 
     A photo matches if ANY face in it matches ANY reference encoding.
-    Uses two-pass approach: first at normal scale, then at higher res for missed faces.
+    Parallelized with a ThreadPoolExecutor (face_recognition releases the GIL).
+    Encodings are memoized on disk by sha12+variant; thumbnails for matches
+    are written to the on-disk cache and served via /api/thumbnail/{sha}.jpg.
     """
-    # Use a set to deduplicate (Windows is case-insensitive)
     seen = set()
     photo_files = []
     for ext in ("*.jpg", "*.jpeg", "*.png"):
@@ -213,87 +275,89 @@ def scan_session(
                 photo_files.append(f)
     photo_files.sort()
 
-    results = []
     total = len(photo_files)
-    log.info(f"Scanning {total} photos with tolerance={tolerance}, max_width={FACE_SCAN_MAX_WIDTH}, upsample={FACE_UPSAMPLE}")
+    workers = max(1, min(8, (os.cpu_count() or 4)))
+    log.info(
+        f"Scanning {total} photos workers={workers} tolerance={tolerance} "
+        f"max_width={FACE_SCAN_MAX_WIDTH} upsample={FACE_UPSAMPLE}"
+    )
 
-    for i, photo_path in enumerate(photo_files):
-        try:
-            image, metadata = load_image_rgb_with_metadata(photo_path)
-            sha12 = hash_file_sha12(photo_path)
+    results: list[MatchResult] = []
+    progress_lock = threading.Lock()
+    done_count = {"n": 0}
 
-            base_result = _scan_variant(
-                image=image,
-                reference_encodings=reference_encodings,
-                tolerance=tolerance,
-                upsample=FACE_UPSAMPLE,
-                variant_name="base",
-            )
-
-            selected_result = base_result
-            enhanced_result = None
-            has_any_face = any(p["faces_detected"] > 0 for p in base_result["passes"])
-
-            if not base_result["matched"] and not has_any_face:
-                enhanced_image = enhance_for_detection(image)
-                enhanced_result = _scan_variant(
-                    image=enhanced_image,
-                    reference_encodings=reference_encodings,
-                    tolerance=tolerance,
-                    upsample=min(FACE_UPSAMPLE + 1, 3),
-                    variant_name="clahe",
-                )
-                if enhanced_result["matched"] or any(p["faces_detected"] > 0 for p in enhanced_result["passes"]):
-                    selected_result = enhanced_result
-
-            matched = selected_result["matched"]
-            best_dist = selected_result["best_dist"]
-            final_locations = selected_result["final_locations"]
-            final_scale = selected_result["final_scale"]
-
-            diagnostic_payload = {
-                "file": os.path.basename(photo_path),
-                "hash": sha12,
-                "capture_timestamp": metadata.get("capture_timestamp"),
-                "orientation_exif": metadata.get("orientation_exif"),
-                "rotated": metadata.get("rotated"),
-                "size": metadata.get("size"),
-                "matched": matched,
-                "best_distance": None if best_dist == float("inf") else round(best_dist, 6),
-                "passes": base_result["passes"] + ([] if not enhanced_result else enhanced_result["passes"]),
-            }
-            log.info("SCAN_DIAG %s", json.dumps(diagnostic_payload, ensure_ascii=False))
-
-            if matched:
-                orig_locations = [
-                    (int(t / final_scale), int(r / final_scale), int(b / final_scale), int(l / final_scale))
-                    for t, r, b, l in final_locations
-                ]
-                thumb = _make_thumbnail(photo_path)
-                results.append(MatchResult(
-                    file_path=photo_path,
-                    thumbnail_bytes=thumb,
-                    best_distance=best_dist,
-                    face_locations=orig_locations,
-                ))
-                log.info(f"  MATCH: {os.path.basename(photo_path)} (dist={best_dist:.3f})")
-            else:
-                visible_faces = max((p["faces_detected"] for p in diagnostic_payload["passes"]), default=0)
-                if visible_faces > 0:
-                    if best_dist == float("inf"):
-                        log.info(f"  NO MATCH: {os.path.basename(photo_path)} (best_dist=inf, faces={visible_faces})")
-                    else:
-                        log.info(f"  NO MATCH: {os.path.basename(photo_path)} (best_dist={best_dist:.3f}, faces={visible_faces})")
-                else:
-                    log.info(f"  NO FACE: {os.path.basename(photo_path)}")
-
-        except Exception as e:
-            log.warning(f"  ERROR: {os.path.basename(photo_path)}: {e}")
-
+    def _bump_progress():
+        with progress_lock:
+            done_count["n"] += 1
+            n = done_count["n"]
         if progress_callback:
-            progress_callback(i + 1, total)
+            try:
+                progress_callback(n, total)
+            except Exception:
+                log.debug("progress_callback raised; ignoring", exc_info=True)
 
-    # Sort by best match (lowest distance first)
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="photo") as pool:
+        futures = {
+            pool.submit(_process_one_photo, p, reference_encodings, tolerance): p
+            for p in photo_files
+        }
+        for fut in as_completed(futures):
+            photo_path = futures[fut]
+            payload = fut.result()[1]
+            try:
+                if not payload["ok"]:
+                    log.warning(f"  ERROR: {os.path.basename(photo_path)}: {payload['error']}")
+                    continue
+
+                sha12 = payload["sha"]
+                metadata = payload["metadata"]
+                selected = payload["selected"]
+                matched = selected["matched"]
+                best_dist = selected["best_dist"]
+                final_locations = selected["final_locations"]
+                final_scale = selected["final_scale"]
+
+                diagnostic_payload = {
+                    "file": os.path.basename(photo_path),
+                    "hash": sha12,
+                    "capture_timestamp": metadata.get("capture_timestamp"),
+                    "orientation_exif": metadata.get("orientation_exif"),
+                    "rotated": metadata.get("rotated"),
+                    "size": metadata.get("size"),
+                    "matched": matched,
+                    "best_distance": None if best_dist == float("inf") else round(best_dist, 6),
+                    "passes": payload["passes"],
+                }
+                log.info("SCAN_DIAG %s", json.dumps(diagnostic_payload, ensure_ascii=False))
+
+                if matched:
+                    orig_locations = [
+                        (int(t / final_scale), int(r / final_scale), int(b / final_scale), int(l / final_scale))
+                        for t, r, b, l in final_locations
+                    ]
+                    try:
+                        encoding_cache.write_thumbnail(sha12, photo_path)
+                    except Exception:
+                        log.warning(f"thumbnail write failed for {os.path.basename(photo_path)}", exc_info=True)
+                    results.append(MatchResult(
+                        file_path=photo_path,
+                        sha=sha12,
+                        best_distance=best_dist,
+                        face_locations=orig_locations,
+                    ))
+                    log.info(f"  MATCH: {os.path.basename(photo_path)} (dist={best_dist:.3f})")
+                else:
+                    visible_faces = max((p["faces_detected"] for p in diagnostic_payload["passes"]), default=0)
+                    if visible_faces > 0:
+                        if best_dist == float("inf"):
+                            log.info(f"  NO MATCH: {os.path.basename(photo_path)} (best_dist=inf, faces={visible_faces})")
+                        else:
+                            log.info(f"  NO MATCH: {os.path.basename(photo_path)} (best_dist={best_dist:.3f}, faces={visible_faces})")
+                    else:
+                        log.info(f"  NO FACE: {os.path.basename(photo_path)}")
+            finally:
+                _bump_progress()
+
     results.sort(key=lambda r: r.best_distance)
     log.info(f"Scan complete: {len(results)}/{total} matches")
     return results

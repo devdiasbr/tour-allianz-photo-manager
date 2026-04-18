@@ -161,17 +161,18 @@ def test_photo_endpoint_rejects_unsupported_ext(client, existing_session_path):
     assert r.status_code == 400
 
 
-def test_output_endpoint_rejects_slash_in_filename(client):
+def test_output_endpoint_allows_subpath_but_404_when_missing(client):
+    # Per-session subfolders are valid; the file just doesn't exist here.
     r = client.get("/api/output/sub/x.jpg")
-    # Slash makes FastAPI route not match → 404
     assert r.status_code == 404
 
 
-def test_output_endpoint_rejects_dotdot(client):
-    # Filenames with `..` are rejected by our handler (path matched, no real slash)
-    r = client.get("/api/output/..hidden.jpg")
-    # `..hidden.jpg` contains `..` and triggers the explicit ban
-    assert r.status_code == 400
+def test_output_endpoint_rejects_dotdot_segment(client):
+    # A `..` path segment is the actual traversal vector and must be banned.
+    r = client.get("/api/output/..%2Fetc%2Fpasswd")
+    # Either 400 (segment ban) or 404 (resolves outside OUTPUT_DIR) is acceptable;
+    # what matters is we never serve a file from outside OUTPUT_DIR.
+    assert r.status_code in (400, 404)
 
 
 def test_output_endpoint_rejects_unsupported_ext(client):
@@ -243,7 +244,7 @@ def test_scan_full_lifecycle_with_stubbed_scan(client, existing_session_path):
 
     fake_match = type("M", (), {
         "file_path": os.path.join(existing_session_path, "fake.jpg"),
-        "thumbnail_bytes": _png_bytes(),
+        "sha": "deadbeefcafe",
         "best_distance": 0.42,
         "face_locations": [],
     })()
@@ -275,6 +276,10 @@ def test_scan_full_lifecycle_with_stubbed_scan(client, existing_session_path):
         assert poll["matches"][0]["filename"] == "fake.jpg"
         # Confidence: (1 - 0.42) * 100 = 58
         assert poll["matches"][0]["confidence"] == 58
+        # New shape: thumbnail served by URL, not embedded as base64
+        assert poll["matches"][0]["thumbnail_url"] == "/api/thumbnail/deadbeefcafe.jpg"
+        assert poll["matches"][0]["sha"] == "deadbeefcafe"
+        assert "thumbnail" not in poll["matches"][0]
         # match_results stored on session for /api/compose
         assert len(server.sessions[sid]["match_results"]) == 1
     finally:
@@ -305,3 +310,56 @@ def test_cleanup_old_outputs_removes_stale(tmp_path):
 
 def test_cleanup_old_outputs_handles_missing_dir():
     assert server._cleanup_old_outputs("Z:\\does\\not\\exist", ttl_days=7) == 0
+
+
+def test_cleanup_old_outputs_recurses_into_subdirs(tmp_path):
+    sub = tmp_path / "sessionA"
+    sub.mkdir()
+    old = sub / "old.jpg"
+    new = sub / "new.jpg"
+    old.write_bytes(b"x")
+    new.write_bytes(b"x")
+    long_ago = time.time() - 10 * 86400
+    os.utime(old, (long_ago, long_ago))
+    deleted = server._cleanup_old_outputs(str(tmp_path), ttl_days=7)
+    assert deleted == 1
+    assert not old.exists()
+    assert new.exists()
+    # Subdir kept because new.jpg still lives there
+    assert sub.exists()
+
+
+def test_cleanup_old_outputs_removes_empty_session_subdirs(tmp_path):
+    sub = tmp_path / "sessionEmpty"
+    sub.mkdir()
+    old = sub / "old.jpg"
+    old.write_bytes(b"x")
+    long_ago = time.time() - 10 * 86400
+    os.utime(old, (long_ago, long_ago))
+    server._cleanup_old_outputs(str(tmp_path), ttl_days=7)
+    assert not sub.exists()
+
+
+# --- Thumbnail endpoint ---
+
+def test_thumbnail_endpoint_404_for_missing(client):
+    r = client.get("/api/thumbnail/nonexistent000.jpg")
+    assert r.status_code == 404
+
+
+def test_thumbnail_endpoint_rejects_invalid_sha(client):
+    r = client.get("/api/thumbnail/..%2Fpasswd.jpg")
+    assert r.status_code in (400, 404)
+
+
+def test_thumbnail_endpoint_serves_cached(client, tmp_path, monkeypatch):
+    fake_sha = "abc123def456"
+    fake_path = str(tmp_path / f"{fake_sha}.jpg")
+    Image.new("RGB", (10, 10), (1, 2, 3)).save(fake_path, format="JPEG")
+    monkeypatch.setattr(
+        server.encoding_cache, "thumbnail_path", lambda sha: fake_path if sha == fake_sha else "/nope"
+    )
+    r = client.get(f"/api/thumbnail/{fake_sha}.jpg")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("image/jpeg")
+    assert "max-age" in r.headers.get("cache-control", "")

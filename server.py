@@ -2,7 +2,6 @@ import os
 import io
 import time
 import uuid
-import base64
 import json
 import hashlib
 import logging
@@ -22,6 +21,7 @@ from PIL import Image, UnidentifiedImageError
 
 from app.config import UPLOADS_DIR, OUTPUT_DIR
 from app.services import face_service, composition_service
+from app.services import cache as encoding_cache
 
 
 # ---------- Logging + per-request context ----------
@@ -57,18 +57,32 @@ OUTPUT_TTL_DAYS = 7
 
 
 def _cleanup_old_outputs(directory: str, ttl_days: int) -> int:
-    """Delete files in `directory` older than `ttl_days`. Returns count deleted."""
+    """Delete files in `directory` (recursive) older than `ttl_days`. Returns count deleted.
+
+    Walks subdirectories so per-session output folders are pruned, and removes
+    empty session subfolders left behind.
+    """
     if not os.path.isdir(directory):
         return 0
     cutoff = time.time() - (ttl_days * 86400)
     deleted = 0
-    for entry in os.scandir(directory):
+    for root, dirs, files in os.walk(directory):
+        for name in files:
+            path = os.path.join(root, name)
+            try:
+                if os.path.getmtime(path) < cutoff:
+                    os.remove(path)
+                    deleted += 1
+            except OSError as e:
+                log.warning(f"cleanup: could not remove {path}: {e}")
+    for root, dirs, files in os.walk(directory, topdown=False):
+        if root == directory:
+            continue
         try:
-            if entry.is_file() and entry.stat().st_mtime < cutoff:
-                os.remove(entry.path)
-                deleted += 1
-        except OSError as e:
-            log.warning(f"cleanup: could not remove {entry.path}: {e}")
+            if not os.listdir(root):
+                os.rmdir(root)
+        except OSError:
+            pass
     return deleted
 
 
@@ -221,12 +235,12 @@ def _fix_orientation(img: Image.Image) -> Image.Image:
 def _build_local_matches(results):
     matches = []
     for r in results:
-        thumb_b64 = base64.b64encode(r.thumbnail_bytes).decode("utf-8")
         confidence = max(0, min(100, int((1 - r.best_distance) * 100)))
         matches.append({
             "file_path": r.file_path,
             "filename": os.path.basename(r.file_path),
-            "thumbnail": thumb_b64,
+            "thumbnail_url": f"/api/thumbnail/{r.sha}.jpg",
+            "sha": r.sha,
             "confidence": confidence,
         })
     return matches
@@ -470,9 +484,24 @@ async def get_session_photo(filename: str = ""):
     return FileResponse(candidate, media_type=media)
 
 
+@app.get("/api/thumbnail/{sha}.jpg")
+async def get_thumbnail(sha: str):
+    """Serve a cached thumbnail by sha. Long browser cache since contents are immutable."""
+    if not sha or not sha.isalnum() or len(sha) > 64:
+        return JSONResponse({"error": "Invalid sha"}, status_code=400)
+    path = encoding_cache.thumbnail_path(sha)
+    if not os.path.isfile(path):
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    return FileResponse(
+        path,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=86400, immutable"},
+    )
+
+
 @app.post("/api/compose")
 async def compose_photos(req: ComposeRequest):
-    """Compose selected photos with footer template."""
+    """Compose selected photos with footer template, grouped by session in output/."""
     try:
         state = get_state()
         face_lookup = {}
@@ -481,16 +510,21 @@ async def compose_photos(req: ComposeRequest):
                 if hasattr(mr, "file_path"):
                     face_lookup[mr.file_path] = mr.face_locations
 
+        session_name = None
+        if state.get("session_path"):
+            session_name = os.path.basename(state["session_path"].rstrip("\\/"))
+
         composed_files = []
         for photo_path in req.selected:
             orientation = req.orientations.get(photo_path, "landscape")
             face_locs = face_lookup.get(photo_path, None)
             composed = composition_service.compose_photo(photo_path, orientation, face_locs)
-            out_path = composition_service.save_composed(composed, photo_path)
+            out_path = composition_service.save_composed(composed, photo_path, session_name)
+            rel = os.path.relpath(out_path, OUTPUT_DIR).replace("\\", "/")
             composed_files.append({
                 "original": photo_path,
                 "output": out_path,
-                "filename": os.path.basename(out_path),
+                "filename": rel,
             })
         return {"ok": True, "files": composed_files}
     except Exception as e:
@@ -501,18 +535,21 @@ async def compose_photos(req: ComposeRequest):
         )
 
 
-@app.get("/api/output/{filename}")
-async def get_output_file(filename: str):
-    """Serve a composed output file (validated against OUTPUT_DIR)."""
-    if not filename or "/" in filename or "\\" in filename or ".." in filename:
+@app.get("/api/output/{filepath:path}")
+async def get_output_file(filepath: str):
+    """Serve a composed output file (validated against OUTPUT_DIR).
+
+    Supports per-session subfolders, e.g. `/api/output/<session>/<file>.jpg`.
+    """
+    if not filepath or ".." in filepath.replace("\\", "/").split("/"):
         return JSONResponse({"error": "Invalid filename"}, status_code=400)
 
-    if not filename.lower().endswith(ALLOWED_IMAGE_EXTS):
+    if not filepath.lower().endswith(ALLOWED_IMAGE_EXTS):
         return JSONResponse({"error": "Unsupported file type"}, status_code=400)
 
-    file_path = os.path.join(OUTPUT_DIR, filename)
+    file_path = os.path.join(OUTPUT_DIR, filepath)
     if not _is_within(file_path, OUTPUT_DIR):
-        log.warning(f"Output path traversal attempt: filename={filename!r}")
+        log.warning(f"Output path traversal attempt: filename={filepath!r}")
         return JSONResponse({"error": "Invalid filename"}, status_code=400)
 
     if not os.path.exists(file_path):

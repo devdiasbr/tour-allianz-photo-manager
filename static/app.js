@@ -486,7 +486,7 @@
                 card.className = `photo-card ${isSelected ? 'selected' : ''}`;
                 card.dataset.path = m.file_path;
                 card.innerHTML = `
-                    <img src="data:image/jpeg;base64,${m.thumbnail}"
+                    <img src="${m.thumbnail_url}" loading="lazy"
                          onclick="showModal(${idx})">
                     <div class="photo-card-footer">
                         <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
@@ -563,6 +563,11 @@
             }
         }
 
+        function encodeOutputPath(filename) {
+            // Each path segment encoded individually so subfolders survive routing.
+            return filename.split('/').map(encodeURIComponent).join('/');
+        }
+
         function renderPreview() {
             const grid = document.getElementById('previewGrid');
             grid.innerHTML = '';
@@ -572,11 +577,13 @@
             composedFiles.forEach(f => {
                 const card = document.createElement('div');
                 card.className = 'preview-card';
+                const url = `/api/output/${encodeOutputPath(f.filename)}`;
+                const label = f.filename.split('/').pop();
                 card.innerHTML = `
-                    <img src="/api/output/${encodeURIComponent(f.filename)}"
-                         onclick="showModal('/api/output/${encodeURIComponent(f.filename)}')"
+                    <img src="${url}"
+                         onclick="showModal('${url}')"
                          loading="lazy">
-                    <div class="preview-card-info">${f.filename}</div>
+                    <div class="preview-card-info">${label}</div>
                 `;
                 grid.appendChild(card);
             });
@@ -660,7 +667,7 @@
             const fullUrl = `/api/photo?filename=${encodeURIComponent(m.filename)}`;
             img.onerror = () => {
                 img.onerror = null;
-                img.src = `data:image/jpeg;base64,${m.thumbnail}`;
+                if (m.thumbnail_url) img.src = m.thumbnail_url;
             };
             img.src = fullUrl;
             document.getElementById('carouselInfo').innerHTML =

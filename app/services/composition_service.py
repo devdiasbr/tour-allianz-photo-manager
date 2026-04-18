@@ -103,13 +103,24 @@ def _face_center_y(face_locations, original_h, scale):
     return int(sum(centers) / len(centers))
 
 
-def save_composed(image: Image.Image, original_path: str) -> str:
+def save_composed(
+    image: Image.Image,
+    original_path: str,
+    session_name: str | None = None,
+) -> str:
     """Save a composed image to the output directory.
 
+    When `session_name` is given, the file is placed in
+    `OUTPUT_DIR/<session_name>/`, isolating outputs per event.
     Returns the output file path.
     """
     filename = os.path.basename(original_path)
     name, ext = os.path.splitext(filename)
-    output_path = os.path.join(OUTPUT_DIR, f"{name}_composed{ext}")
+    if session_name:
+        target_dir = os.path.join(OUTPUT_DIR, session_name)
+        os.makedirs(target_dir, exist_ok=True)
+    else:
+        target_dir = OUTPUT_DIR
+    output_path = os.path.join(target_dir, f"{name}_composed{ext}")
     image.save(output_path, "JPEG", quality=95, dpi=(PRINT_DPI, PRINT_DPI))
     return output_path
