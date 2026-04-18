@@ -600,7 +600,7 @@
                     text: 'Enviando para impressão...',
                     size: 'small'
                 });
-                showSnackbar(`${data.printed} imagens enviadas para impressão`);
+                showSnackbar(`${data.printed} imagem(ns) abertas — clique em Imprimir no visualizador para escolher a impressora`);
             } catch (err) {
                 showSnackbar('Erro: ' + err.message);
             }

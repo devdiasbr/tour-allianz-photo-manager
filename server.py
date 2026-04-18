@@ -560,22 +560,28 @@ async def get_output_file(filepath: str):
 
 @app.post("/api/print")
 async def print_photos(req: PrintRequest):
-    """Print composed photos (must reside in OUTPUT_DIR)."""
+    """Open composed photos in the default viewer so the user can pick a printer.
+
+    The Windows ShellExecute "print" verb sends straight to the default printer
+    with no dialog — bad UX for a kiosk where the user wants to choose printer,
+    paper size, and copies. Opening with the default verb launches the system
+    photo viewer, whose Print button invokes the native "Print Pictures" wizard.
+    """
     try:
-        printed = 0
+        opened = 0
         for f in req.files:
             path = f.output
             if not path or not _is_within(path, OUTPUT_DIR):
                 log.warning(f"Print rejected (outside OUTPUT_DIR): {path!r}")
                 continue
             if os.path.exists(path):
-                os.startfile(path, "print")
-                printed += 1
-        return {"ok": True, "printed": printed}
+                os.startfile(path)
+                opened += 1
+        return {"ok": True, "printed": opened}
     except Exception as e:
         log.exception("print_photos failed")
         return JSONResponse(
-            {"ok": False, "message": f"Erro ao imprimir: {e}"},
+            {"ok": False, "message": f"Erro ao abrir para impressão: {e}"},
             status_code=500,
         )
 
@@ -584,5 +590,11 @@ async def print_photos(req: PrintRequest):
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
+    import argparse
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    parser = argparse.ArgumentParser(description="Tour Allianz Parque - Photo Manager")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--reload", action="store_true")
+    args = parser.parse_args()
+    uvicorn.run("server:app" if args.reload else app, host=args.host, port=args.port, reload=args.reload)
