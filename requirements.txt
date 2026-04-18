@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+opencv-python
+face-recognition
+Pillow
+numpy
+pytest
+httpx

@@ -1,0 +1,48 @@
+# ============ PII / dados sensíveis (NUNCA versionar) ============
+# Fotos reais de visitantes
+uploads/
+# Composições prontas (também contêm rostos)
+output/
+
+# ============ Virtualenv ============
+venv/
+.venv/
+env/
+
+# ============ Python ============
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# ============ Editores / IDE ============
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ============ OS / temporário ============
+*.log
+*.tmp
+*.bak
+
+# ============ Node (se algum dia entrar build de assets) ============
+node_modules/
+dist/
+
+# ============ Configurações locais ============
+.env
+.env.local
+*.local
+
+# ============ Claude Code (config local pessoal) ============
+.claude/
