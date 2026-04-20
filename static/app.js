@@ -310,13 +310,6 @@
             }
         }
 
-        function faceChipHtml(dataUrl, index) {
-            return `<div class="face-chip" data-idx="${index}">
-                <img src="${dataUrl}" alt="">
-                <button class="rm" onclick="removeFaceChip(${index})" title="Remover">×</button>
-            </div>`;
-        }
-
         function removeFaceChip(index) {
             const chip = document.querySelector(`.face-chip[data-idx="${index}"]`);
             if (chip) chip.remove();
@@ -491,10 +484,10 @@
         }
 
         function photoCardHtml(photo, idx) {
-            const conf = typeof photo.confidence === 'number' ? photo.confidence / 100 : (photo.confidence || 0);
-            const isMatch = conf >= 0.5;
+            const rawConf = photo.confidence || 0;
+            const isMatch = rawConf >= 50;
             const isSelected = selectedPhotos.has(photo.file_path);
-            const pct = isMatch ? `${Math.round(conf * 100)}%` : '—';
+            const pct = isMatch ? `${rawConf}%` : '—';
             const classes = ['photo-card', isMatch ? 'match' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
             const escapedPath = (photo.file_path || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             return `
@@ -539,23 +532,6 @@
             }
 
             grid.innerHTML = matchResults.map((m, idx) => photoCardHtml(m, idx)).join('');
-        }
-
-        function togglePhoto(path, checked) {
-            if (checked) selectedPhotos.add(path);
-            else selectedPhotos.delete(path);
-
-            // Update card visual
-            document.querySelectorAll('.photo-card').forEach(card => {
-                if (card.dataset.path === path) {
-                    card.classList.toggle('selected', checked);
-                }
-            });
-
-            const countEl = document.getElementById('selectionCount');
-            if (countEl) countEl.textContent = selectedPhotos.size;
-            document.getElementById('gridStatus').textContent =
-                `${matchResults.length} fotos encontradas, ${selectedPhotos.size} selecionadas`;
         }
 
         function toggleSelectAll() {
