@@ -142,24 +142,17 @@
     </div>
 
     <!-- Loading Overlay -->
-    <div
-        class="loading-overlay loading-size-medium loading-color-primary loading-mode-circular"
-        id="loading"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        aria-hidden="true"
-        aria-busy="false"
-    >
-        <div class="loading-panel">
-            <div class="loading-indicator" id="loadingIndicator"></div>
-            <div class="loading-linear"><span></span></div>
-            <div id="loadingText" class="loading-text">Processando...</div>
-        </div>
+    <div class="loading-overlay" id="loading"
+         role="status" aria-live="polite" aria-atomic="true"
+         aria-hidden="true" aria-busy="false">
+      <div class="loading-panel">
+        <div class="loading-indicator"></div>
+        <div class="loading-text" id="loadingText">Processando...</div>
+      </div>
     </div>
 
-    <!-- Snackbar -->
-    <div class="snackbar" id="snackbar"></div>
+    <!-- Snackbar Stack -->
+    <div class="snackbar-stack" id="snackStack"></div>
 
     <!-- Image Carousel Modal -->
     <div class="modal-overlay" id="imageModal" onclick="handleModalClick(event)">

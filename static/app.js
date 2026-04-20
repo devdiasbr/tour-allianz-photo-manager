@@ -17,38 +17,16 @@
                 this.pending = new Set();
                 this.startedAt = 0;
                 this.hideTimer = null;
-                this.options = {
-                    size: 'medium',
-                    color: 'primary',
-                    customColor: '#4caf50',
-                    speed: 1,
-                    mode: 'circular',
-                    text: 'Processando...',
-                    fadeInMs: 400,
-                    fadeOutMs: 250,
-                    minVisibleMs: 240
-                };
-                this.setOptions({});
+                this.options = { text: 'Processando...', fadeInMs: 400, fadeOutMs: 250, minVisibleMs: 240 };
             }
 
             setOptions(partial) {
                 this.options = { ...this.options, ...partial };
-                const safeSize = ['small', 'medium', 'large'].includes(this.options.size) ? this.options.size : 'medium';
-                const safeColor = ['primary', 'secondary', 'custom'].includes(this.options.color) ? this.options.color : 'primary';
-                const safeMode = ['circular', 'linear'].includes(this.options.mode) ? this.options.mode : 'circular';
-                this.el.classList.remove('loading-size-small', 'loading-size-medium', 'loading-size-large');
-                this.el.classList.remove('loading-color-primary', 'loading-color-secondary', 'loading-color-custom');
-                this.el.classList.remove('loading-mode-circular', 'loading-mode-linear');
-                this.el.classList.add(`loading-size-${safeSize}`, `loading-color-${safeColor}`, `loading-mode-${safeMode}`);
-                this.el.style.setProperty('--loading-custom', this.options.customColor || '#4caf50');
-                this.el.style.setProperty('--loading-speed', `${Math.max(0.2, Number(this.options.speed) || 1)}s`);
-                this.el.style.setProperty('--loading-fade-in', `${Math.max(300, Math.min(500, Number(this.options.fadeInMs) || 400))}ms`);
-                this.el.style.setProperty('--loading-fade-out', `${Math.max(200, Math.min(300, Number(this.options.fadeOutMs) || 250))}ms`);
-                if (this.options.text) this.setText(this.options.text);
+                if (partial.text) this.setText(partial.text);
             }
 
             setText(text) {
-                this.textEl.textContent = text || '';
+                if (this.textEl) this.textEl.textContent = text || '';
             }
 
             show(text, opts = {}) {
@@ -59,7 +37,6 @@
                 if (this.pending.size === 1) {
                     this.startedAt = Date.now();
                     clearTimeout(this.hideTimer);
-                    this.el.classList.remove('is-hiding');
                     this.el.classList.add('is-visible');
                     this.el.setAttribute('aria-hidden', 'false');
                     this.el.setAttribute('aria-busy', 'true');
@@ -71,37 +48,25 @@
                 if (token) this.pending.delete(token);
                 else this.pending.clear();
                 if (this.pending.size > 0) return;
-                const minVisibleMs = Math.max(0, Number(this.options.minVisibleMs) || 0);
-                const wait = Math.max(0, minVisibleMs - (Date.now() - this.startedAt));
+                const wait = Math.max(0, (this.options.minVisibleMs || 0) - (Date.now() - this.startedAt));
                 clearTimeout(this.hideTimer);
                 this.hideTimer = setTimeout(() => {
                     this.el.classList.remove('is-visible');
-                    this.el.classList.add('is-hiding');
+                    this.el.setAttribute('aria-hidden', 'true');
                     this.el.setAttribute('aria-busy', 'false');
-                    const fadeOutMs = Math.max(200, Math.min(300, Number(this.options.fadeOutMs) || 250));
-                    setTimeout(() => {
-                        if (this.pending.size === 0) {
-                            this.el.classList.remove('is-hiding');
-                            this.el.setAttribute('aria-hidden', 'true');
-                        }
-                    }, fadeOutMs);
                 }, wait);
             }
 
             async withLoading(promiseFactory, opts = {}) {
                 const token = this.show(opts.text, opts);
-                try {
-                    return await promiseFactory();
-                } finally {
-                    this.hide(token);
-                }
+                try { return await promiseFactory(); } finally { this.hide(token); }
             }
 
             async fetchJson(url, options = {}, loadingOpts = {}) {
                 return this.withLoading(async () => {
-                    const res = await fetch(url, options);
-                    const data = await res.json();
-                    return { res, data };
+                    const r = await fetch(url, options);
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    return r.json();
                 }, loadingOpts);
             }
         }
@@ -632,11 +597,18 @@
         }
 
         // === UI HELPERS ===
+        function showSnack(text, severity = 'info', ms = 3500) {
+            const stack = document.getElementById('snackStack');
+            if (!stack) return;
+            const el = document.createElement('div');
+            el.className = `snack snack-${severity}`;
+            el.textContent = text;
+            stack.appendChild(el);
+            setTimeout(() => { if (el.parentNode) el.remove(); }, ms);
+        }
+
         function showSnackbar(msg) {
-            const el = document.getElementById('snackbar');
-            el.textContent = msg;
-            el.classList.add('show');
-            setTimeout(() => el.classList.remove('show'), 3000);
+            showSnack(msg, 'info');
         }
 
         function showLoading(text, options = {}) {
@@ -672,12 +644,12 @@
             carouselSource = source;
             carouselIndex = index;
             updateCarousel();
-            document.getElementById('imageModal').classList.add('show');
+            document.getElementById('imageModal').classList.add('is-visible');
             document.addEventListener('keydown', carouselKeyHandler);
         }
 
         function closeModal() {
-            document.getElementById('imageModal').classList.remove('show');
+            document.getElementById('imageModal').classList.remove('is-visible');
             document.removeEventListener('keydown', carouselKeyHandler);
         }
 
