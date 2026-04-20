@@ -46,6 +46,7 @@ dist/
 
 # ============ Claude Code (config local pessoal) ============
 .claude/
+.superpowers/
 
 # ============ Cache local (encodings + thumbnails) ============
 cache/
