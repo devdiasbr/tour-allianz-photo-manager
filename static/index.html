@@ -13,32 +13,27 @@
 </head>
 <body>
 <!--ICONS-->
-    <button id="themeToggle" title="Alternar tema" style="position:fixed;top:12px;right:12px;z-index:100;padding:6px 10px;font-family:monospace;font-size:11px">theme</button>
-    <!-- Header -->
-    <div class="header">
-        <span style="font-size:28px">⚽</span>
-        <h1>Tour Allianz Parque</h1>
-        <span>Photo Manager</span>
-    </div>
+<header class="statusbar">
+  <div class="wordmark">TOUR ALLIANZ</div>
+  <div class="meta" id="sessionMeta">
+    <span>sessão <b id="metaSession">—</b></span>
+    <span>fotos <b id="metaPhotos">0</b></span>
+    <span id="metaScan" class="live hidden">scan <b id="metaScanVal">0/0</b></span>
+    <span><b id="metaMatches">0</b> matches</span>
+  </div>
+  <div class="version">v1.0</div>
+  <button id="themeToggle" class="theme-toggle" title="Alternar tema" aria-label="Alternar tema">
+    <svg class="i-sun"><use href="#i-sun"/></svg>
+    <svg class="i-moon"><use href="#i-moon"/></svg>
+  </button>
+</header>
 
-    <!-- Stepper -->
-    <div class="stepper">
-        <div class="step active" data-step="0" onclick="goToStep(0)">
-            <div class="step-num">1</div> Sessão
-        </div>
-        <div class="step-line"></div>
-        <div class="step inactive" data-step="1" onclick="goToStep(1)">
-            <div class="step-num">2</div> Captura
-        </div>
-        <div class="step-line"></div>
-        <div class="step inactive" data-step="2" onclick="goToStep(2)">
-            <div class="step-num">3</div> Fotos
-        </div>
-        <div class="step-line"></div>
-        <div class="step inactive" data-step="3" onclick="goToStep(3)">
-            <div class="step-num">4</div> Impressão
-        </div>
-    </div>
+<nav class="tabs">
+  <div class="tab active" data-step="0" onclick="goToStep(0)"><span class="n">01</span>SESSÃO</div>
+  <div class="tab" data-step="1" onclick="goToStep(1)"><span class="n">02</span>CAPTURA</div>
+  <div class="tab" data-step="2" onclick="goToStep(2)"><span class="n">03</span>FOTOS</div>
+  <div class="tab" data-step="3" onclick="goToStep(3)"><span class="n">04</span>IMPRIMIR</div>
+</nav>
 
     <!-- Step 0: Folder Picker -->
     <div id="step0" class="content">

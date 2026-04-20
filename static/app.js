@@ -116,15 +116,17 @@
             document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`step${step}`).classList.remove('hidden');
 
-            document.querySelectorAll('.step').forEach(el => {
-                const s = parseInt(el.dataset.step);
-                el.className = `step ${s < step ? 'completed' : s === step ? 'active' : 'inactive'}`;
-            });
-
             currentStep = step;
 
             // Enter new step
             if (step === 1) startWebcam();
+
+            // sync tabs
+            document.querySelectorAll('.tab').forEach(t => {
+                const n = Number(t.dataset.step);
+                t.classList.toggle('active', n === step);
+                t.classList.toggle('done', n < step);
+            });
         }
 
         function advanceTo(step) {
@@ -137,13 +139,15 @@
             document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`step${step}`).classList.remove('hidden');
 
-            document.querySelectorAll('.step').forEach(el => {
-                const s = parseInt(el.dataset.step);
-                el.className = `step ${s < step ? 'completed' : s === step ? 'active' : 'inactive'}`;
-            });
-
             currentStep = step;
             if (step === 1) startWebcam();
+
+            // sync tabs
+            document.querySelectorAll('.tab').forEach(t => {
+                const n = Number(t.dataset.step);
+                t.classList.toggle('active', n === step);
+                t.classList.toggle('done', n < step);
+            });
         }
 
         // === FOLDER PICKER ===
@@ -231,6 +235,7 @@
 
             sessionPath = data.path;
             sessionPhotoCount = Number(data.count || 0);
+            updateStatusBar({ session: sessionPath.split(/[\\/]/).pop(), photos: sessionPhotoCount });
             capturedCount = 0;
             matchResults = [];
             selectedPhotos.clear();
@@ -706,6 +711,24 @@
             else if (e.key === 'ArrowRight') carouselNav(1);
             else if (e.key === 'Escape') closeModal();
         }
+
+        // === STATUS BAR ===
+        function updateStatusBar({ session, photos, scanCur, scanTot, matches } = {}) {
+            const el = id => document.getElementById(id);
+            if (session !== undefined) { const s = el('metaSession'); if (s) s.textContent = session || '—'; }
+            if (photos !== undefined) { const p = el('metaPhotos'); if (p) p.textContent = photos; }
+            if (matches !== undefined) { const m = el('metaMatches'); if (m) m.textContent = matches; }
+            const scan = el('metaScan');
+            if (scan) {
+                if (scanCur !== undefined && scanTot !== undefined && scanTot > 0) {
+                    const v = el('metaScanVal'); if (v) v.textContent = `${scanCur}/${scanTot}`;
+                    scan.classList.remove('hidden');
+                } else if (scanCur === null) {
+                    scan.classList.add('hidden');
+                }
+            }
+        }
+        window.updateStatusBar = updateStatusBar;
 
         // === INIT ===
         loadingManager = new LoadingComponent();
