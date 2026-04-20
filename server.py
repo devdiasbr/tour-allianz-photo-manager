@@ -24,9 +24,10 @@ from app.config import UPLOADS_DIR, OUTPUT_DIR
 
 STATIC_DIR = Path(__file__).parent / "static"
 
-_INDEX_CACHE: dict = {"html": None, "mtime": 0.0}
 from app.services import face_service, composition_service
 from app.services import cache as encoding_cache
+
+_INDEX_CACHE: dict = {"html": None, "mtime": 0.0}
 
 
 # ---------- Logging + per-request context ----------
@@ -256,6 +257,8 @@ def _build_local_matches(results):
 def root():
     idx = STATIC_DIR / "index.html"
     icons = STATIC_DIR / "_icons.svg"
+    if not idx.exists() or not icons.exists():
+        raise HTTPException(status_code=500, detail="UI assets missing")
     mtime = max(idx.stat().st_mtime, icons.stat().st_mtime)
     if _INDEX_CACHE["html"] is None or _INDEX_CACHE["mtime"] != mtime:
         html = idx.read_text(encoding="utf-8")
