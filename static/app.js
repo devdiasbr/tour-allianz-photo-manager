@@ -171,19 +171,17 @@
             const recents = loadRecent();
             const section = document.getElementById('recentSection');
             const list = document.getElementById('recentList');
-            if (recents.length === 0) { section.style.display = 'none'; return; }
-            section.style.display = 'block';
+            if (recents.length === 0) { section.classList.add('hidden'); return; }
+            section.classList.remove('hidden');
             list.innerHTML = '';
             recents.forEach(r => {
                 const item = document.createElement('div');
-                item.className = 'recent-item';
+                item.className = 'recent-row';
                 const name = r.path.split(/[\\\/]/).pop() || r.path;
                 item.innerHTML = `
-                    <div>
-                        <div style="font-weight:600">📁 ${name}</div>
-                        <div class="recent-path">${r.path}</div>
-                    </div>
-                    <div class="recent-count">📷 ${r.count} fotos</div>
+                    <span class="r-path" title="${r.path}">${name}</span>
+                    <span class="r-count">${r.count} fotos</span>
+                    <span class="r-when"></span>
                 `;
                 item.onclick = () => {
                     document.getElementById('pathInput').value = r.path;
@@ -194,9 +192,9 @@
         }
 
         async function browseFolder() {
-            const btn = document.querySelector('#step0 .btn-green');
+            const btn = document.getElementById('btnBrowse');
             btn.disabled = true;
-            btn.textContent = '⏳ Abrindo...';
+            btn.textContent = 'Abrindo...';
             try {
                 const res = await fetch('/api/browse-folder');
                 const data = await res.json();
@@ -206,14 +204,14 @@
                 }
             } finally {
                 btn.disabled = false;
-                btn.textContent = '📂 Procurar...';
+                btn.innerHTML = '<svg><use href="#i-folder"/></svg>Procurar';
             }
         }
 
         async function confirmFolder() {
             const path = document.getElementById('pathInput').value.trim();
             const info = document.getElementById('pathInfo');
-            if (!path) { info.className = 'path-info err'; info.textContent = '⚠ Digite o caminho da pasta.'; return; }
+            if (!path) { info.className = 'path-info err'; info.textContent = 'Digite o caminho da pasta.'; return; }
 
             const { data } = await requestJson('/api/session/select', {
                 method: 'POST',
@@ -225,12 +223,12 @@
 
             if (!data.ok) {
                 info.className = 'path-info err';
-                info.textContent = `❌ ${data.message}`;
+                info.textContent = data.message;
                 return;
             }
 
             info.className = 'path-info ok';
-            info.textContent = `✅ ${data.count} foto(s) encontrada(s) em: ${data.path}`;
+            info.textContent = `${data.count} foto(s) encontrada(s) em: ${data.path}`;
             saveRecent(data.path, data.count);
 
             sessionPath = data.path;
@@ -312,11 +310,26 @@
             }
         }
 
+        function faceChipHtml(dataUrl, index) {
+            return `<div class="face-chip" data-idx="${index}">
+                <img src="${dataUrl}" alt="">
+                <button class="rm" onclick="removeFaceChip(${index})" title="Remover">×</button>
+            </div>`;
+        }
+
+        function removeFaceChip(index) {
+            const chip = document.querySelector(`.face-chip[data-idx="${index}"]`);
+            if (chip) chip.remove();
+        }
+        window.removeFaceChip = removeFaceChip;
+
         function addFaceChip(imgSrc) {
             const container = document.getElementById('capturedFaces');
+            const idx = container.children.length;
             const chip = document.createElement('div');
             chip.className = 'face-chip';
-            chip.innerHTML = `<img src="${imgSrc}"><button class="remove" onclick="this.parentElement.remove()">×</button>`;
+            chip.dataset.idx = idx;
+            chip.innerHTML = `<img src="${imgSrc}" alt=""><button class="rm" onclick="removeFaceChip(${idx})" title="Remover">×</button>`;
             container.appendChild(chip);
         }
 
@@ -401,7 +414,7 @@
                 return `Analisando fotos... ${percent}%`;
             };
 
-            progress.style.display = 'none';
+            progress.classList.add('hidden');
             fill.style.width = '0%';
             text.textContent = progressText(0, fallbackTotal, 0);
             grid.innerHTML = '';
@@ -423,6 +436,7 @@
                     showSnackbar(startData.message || 'Erro ao iniciar scan');
                     return;
                 }
+                progress.classList.remove('hidden');
                 const jobId = startData.job_id;
 
                 while (true) {
@@ -438,8 +452,8 @@
                     const done = Math.min(j.progress || 0, total || j.progress || 0);
                     const percent = total > 0 ? Math.floor((done * 100) / total) : 0;
                     fill.style.width = percent + '%';
+                    text.textContent = `${done}/${total > 0 ? total : '?'}`;
                     const txt = progressText(done, total, percent);
-                    text.textContent = txt;
                     if (loadingManager) loadingManager.setText(txt);
                     if (total > 0) {
                         document.getElementById('gridStatus').textContent =
@@ -448,15 +462,17 @@
 
                     if (j.status === 'done') {
                         fill.style.width = '100%';
+                        text.textContent = `${total}/${total}`;
                         const finalText = total > 0
-                            ? `Concluído! • ${total}/${total} processadas • 0 restantes`
-                            : `Concluído!`;
-                        text.textContent = finalText;
+                            ? `Concluido! • ${total}/${total} processadas • 0 restantes`
+                            : `Concluido!`;
                         if (loadingManager) loadingManager.setText(finalText);
 
                         matchResults = j.matches || [];
                         selectedPhotos = new Set(matchResults.map(m => m.file_path));
                         matchResults.forEach(m => { orientations[m.file_path] = 'landscape'; });
+                        const matchesEl = document.getElementById('scanMatches');
+                        if (matchesEl) matchesEl.textContent = matchResults.length;
                         renderPhotoGrid();
                         document.getElementById('gridStatus').textContent =
                             `${matchResults.length} fotos encontradas, ${matchResults.length} selecionadas`;
@@ -474,40 +490,55 @@
             }
         }
 
+        function photoCardHtml(photo, idx) {
+            const conf = typeof photo.confidence === 'number' ? photo.confidence / 100 : (photo.confidence || 0);
+            const isMatch = conf >= 0.5;
+            const isSelected = selectedPhotos.has(photo.file_path);
+            const pct = isMatch ? `${Math.round(conf * 100)}%` : '—';
+            const classes = ['photo-card', isMatch ? 'match' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
+            const escapedPath = (photo.file_path || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            return `
+              <div class="${classes}" data-idx="${idx}" data-path="${(photo.file_path || '').replace(/"/g, '&quot;')}" onclick="handlePhotoClick(${idx}, '${escapedPath}', event)">
+                <div class="img-wrap">
+                  <img src="${photo.thumbnail_url || photo.url || ''}" alt="" loading="lazy">
+                  <div class="check"></div>
+                </div>
+                <div class="meta">
+                  <span class="fname">${photo.filename || ''}</span>
+                  <span class="pct">${pct}</span>
+                </div>
+              </div>
+            `;
+        }
+
+        function handlePhotoClick(idx, filePath, event) {
+            if (event.target.closest('.check')) {
+                event.stopPropagation();
+                if (selectedPhotos.has(filePath)) selectedPhotos.delete(filePath);
+                else selectedPhotos.add(filePath);
+                const card = document.querySelector(`.photo-card[data-idx="${idx}"]`);
+                if (card) card.classList.toggle('selected', selectedPhotos.has(filePath));
+                const countEl = document.getElementById('selectionCount');
+                if (countEl) countEl.textContent = selectedPhotos.size;
+                return;
+            }
+            showModal(idx);
+        }
+        window.handlePhotoClick = handlePhotoClick;
+
         function renderPhotoGrid() {
             const grid = document.getElementById('photoGrid');
             grid.innerHTML = '';
 
+            const countEl = document.getElementById('selectionCount');
+            if (countEl) countEl.textContent = selectedPhotos.size;
+
             if (matchResults.length === 0) {
-                grid.innerHTML = '<div style="text-align:center;padding:40px;color:#666;width:100%">🔍 Nenhuma foto encontrada</div>';
+                grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim);width:100%">Nenhuma foto encontrada</div>';
                 return;
             }
 
-            matchResults.forEach((m, idx) => {
-                const isSelected = selectedPhotos.has(m.file_path);
-                const confClass = m.confidence >= 70 ? 'conf-high' : m.confidence >= 50 ? 'conf-med' : 'conf-low';
-
-                const card = document.createElement('div');
-                card.className = `photo-card ${isSelected ? 'selected' : ''}`;
-                card.dataset.path = m.file_path;
-                card.innerHTML = `
-                    <img src="${m.thumbnail_url}" loading="lazy"
-                         onclick="showModal(${idx})">
-                    <div class="photo-card-footer">
-                        <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-                            <input type="checkbox" ${isSelected ? 'checked' : ''}
-                                   onchange="togglePhoto('${m.file_path.replace(/\\/g, '\\\\')}', this.checked)">
-                            <span class="confidence-badge ${confClass}">${m.confidence}%</span>
-                        </label>
-                        <select class="orient-select"
-                                onchange="orientations['${m.file_path.replace(/\\/g, '\\\\')}'] = this.value">
-                            <option value="landscape">Paisagem</option>
-                            <option value="portrait">Retrato</option>
-                        </select>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+            grid.innerHTML = matchResults.map((m, idx) => photoCardHtml(m, idx)).join('');
         }
 
         function togglePhoto(path, checked) {
@@ -521,6 +552,8 @@
                 }
             });
 
+            const countEl = document.getElementById('selectionCount');
+            if (countEl) countEl.textContent = selectedPhotos.size;
             document.getElementById('gridStatus').textContent =
                 `${matchResults.length} fotos encontradas, ${selectedPhotos.size} selecionadas`;
         }
@@ -533,6 +566,8 @@
                 matchResults.forEach(m => selectedPhotos.add(m.file_path));
             }
             renderPhotoGrid();
+            const countEl = document.getElementById('selectionCount');
+            if (countEl) countEl.textContent = selectedPhotos.size;
             document.getElementById('gridStatus').textContent =
                 `${matchResults.length} fotos encontradas, ${selectedPhotos.size} selecionadas`;
         }
@@ -579,16 +614,21 @@
             document.getElementById('previewStatus').textContent =
                 `${composedFiles.length} imagens compostas e prontas`;
 
+            const composedCountEl = document.getElementById('composedCount');
+            if (composedCountEl) composedCountEl.textContent = composedFiles.length;
+
             composedFiles.forEach((f, idx) => {
-                const card = document.createElement('div');
-                card.className = 'preview-card';
                 const url = `/api/output/${encodeOutputPath(f.filename)}`;
                 const label = f.filename.split('/').pop();
+                const card = document.createElement('div');
+                card.className = 'photo-card';
                 card.innerHTML = `
-                    <img src="${url}"
-                         onclick="showModal(${idx}, 'composed')"
-                         loading="lazy">
-                    <div class="preview-card-info">${label}</div>
+                    <div class="img-wrap" onclick="showModal(${idx}, 'composed')" style="cursor:pointer">
+                        <img src="${url}" loading="lazy" alt="">
+                    </div>
+                    <div class="meta">
+                        <span class="fname">${label}</span>
+                    </div>
                 `;
                 grid.appendChild(card);
             });

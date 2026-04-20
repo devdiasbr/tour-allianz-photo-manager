@@ -37,38 +37,34 @@
 
     <!-- Step 0: Folder Picker -->
     <div id="step0" class="content">
-        <div class="folder-picker">
-            <div class="section-title">Pasta da sessão</div>
-            <div class="section-sub">Selecione o diretório com as fotos capturadas no evento.</div>
-            <div class="path-row">
-                <button class="btn btn-secondary" onclick="browseFolder()">
-                    <svg><use href="#i-folder"/></svg>Procurar
-                </button>
-                <input type="text" id="pathInput" class="path-input"
-                       placeholder="/caminho/para/a/sessão"
-                       onkeydown="if(event.key==='Enter') confirmFolder()">
-                <button class="btn btn-primary" onclick="confirmFolder()">
-                    <svg><use href="#i-arrow-right"/></svg>Confirmar
-                </button>
-            </div>
-            <div id="pathInfo" class="path-info"></div>
-            <div id="recentSection" style="display:none">
-                <div style="font-size:13px;color:var(--text-dim);margin-bottom:8px">Pastas recentes</div>
-                <div id="recentList" class="recent-list"></div>
-            </div>
+        <h1>Pasta da sessão</h1>
+        <p class="subtitle">Selecione o diretório com as fotos capturadas no evento.</p>
+        <div class="path-row">
+            <button class="btn btn-secondary" id="btnBrowse" onclick="browseFolder()">
+                <svg><use href="#i-folder"/></svg>Procurar
+            </button>
+            <input type="text" id="pathInput" class="input input-mono path-input"
+                   placeholder="/caminho/para/a/sessão"
+                   onkeydown="if(event.key==='Enter') confirmFolder()">
+            <button class="btn btn-primary" onclick="confirmFolder()">
+                <svg><use href="#i-arrow-right"/></svg>Confirmar
+            </button>
+        </div>
+        <div id="pathInfo" class="path-info" style="font-size:11px;color:var(--text-dim);margin-bottom:var(--space-6);font-family:'JetBrains Mono',monospace"></div>
+        <div id="recentSection" class="hidden">
+            <div class="label" style="margin-bottom:var(--space-2)">Pastas recentes</div>
+            <div id="recentList" class="recent-list"></div>
         </div>
     </div>
 
     <!-- Step 1: Webcam Capture -->
     <div id="step1" class="content hidden">
-        <div class="section-title" style="text-align:center">Captura de Rosto</div>
-        <div class="section-sub" style="text-align:center">Use a câmera ou envie uma foto da galeria</div>
-        <div class="webcam-container">
-            <div class="video-wrapper">
-                <video id="webcam" autoplay playsinline></video>
+        <div class="cam-col">
+            <div class="video-wrapper" id="videoWrap">
+                <video id="webcam" autoplay playsinline muted></video>
                 <canvas id="captureCanvas"></canvas>
             </div>
-            <div class="webcam-controls">
+            <div class="cam-actions">
                 <button class="btn btn-primary" id="btnCapture" onclick="captureFrame()">
                     <svg><use href="#i-camera"/></svg>Capturar Rosto
                 </button>
@@ -77,63 +73,72 @@
                     <input type="file" id="fileUpload" accept="image/*" multiple
                            onchange="uploadPhotos(this.files)" style="display:none">
                 </label>
-                <button class="btn btn-danger" onclick="clearFaces()">
-                    <svg><use href="#i-trash"/></svg>Limpar Rostos
-                </button>
             </div>
-            <div class="captured-section">
-                <strong>Rostos capturados: <span id="faceCount">0</span></strong>
-                <div id="capturedFaces" class="captured-faces"></div>
-            </div>
-            <div class="webcam-controls" style="margin-top:8px">
+        </div>
+        <aside class="side-col">
+            <p class="panel-title">Rostos de referência <span class="n" id="faceCount">0</span></p>
+            <div id="capturedFaces" class="face-strip"></div>
+            <div class="divider"></div>
+            <p class="panel-title">Acoes</p>
+            <div class="side-actions">
                 <button class="btn btn-primary btn-lg" onclick="startSearch()" id="btnSearch" disabled>
                     <svg><use href="#i-search"/></svg>Buscar Fotos
                 </button>
+                <button class="btn btn-danger" onclick="clearFaces()">
+                    <svg><use href="#i-trash"/></svg>Limpar todos
+                </button>
             </div>
-        </div>
+        </aside>
     </div>
 
     <!-- Step 2: Photo Grid -->
     <div id="step2" class="content hidden">
-        <div class="section-title">Fotos Encontradas</div>
-        <div class="status" id="gridStatus"></div>
-        <div class="progress-container" id="scanProgress" style="display:none">
-            <div class="progress-bar"><div class="progress-fill" id="scanFill" style="width:0%"></div></div>
-            <div class="progress-text" id="scanText">Analisando...</div>
-        </div>
         <div class="toolbar">
             <button class="btn btn-ghost" onclick="goToStep(1)">
                 <svg><use href="#i-arrow-left"/></svg>Voltar
             </button>
+            <div class="sep"></div>
             <button class="btn btn-secondary" onclick="toggleSelectAll()">
                 <svg><use href="#i-check"/></svg>Selecionar Todas
             </button>
+            <div class="spacer"></div>
+            <span class="count-label"><b id="selectionCount">0</b> selecionadas</span>
             <button class="btn btn-primary" onclick="composeSelected()">
                 <svg><use href="#i-print"/></svg>Compor e Imprimir
             </button>
         </div>
+        <div class="scan-bar hidden" id="scanProgress">
+            <span>scanning <b id="scanText">0/0</b></span>
+            <div class="bar"><div class="fill" id="scanFill" style="width:0%"></div></div>
+            <span class="scan-match">match <b id="scanMatches">0</b></span>
+        </div>
         <div id="photoGrid" class="photo-grid"></div>
+        <!-- hidden status elements for app.js compatibility -->
+        <span id="gridStatus" class="hidden"></span>
     </div>
 
     <!-- Step 3: Print Preview -->
     <div id="step3" class="content hidden">
-        <div class="section-title">Preview e Impressão</div>
-        <div class="status" id="previewStatus"></div>
         <div class="toolbar">
             <button class="btn btn-ghost" onclick="goToStep(2)">
                 <svg><use href="#i-arrow-left"/></svg>Voltar
             </button>
+            <div class="sep"></div>
             <button class="btn btn-secondary" onclick="saveAll()">
                 <svg><use href="#i-save"/></svg>Salvar Todas
-            </button>
-            <button class="btn btn-primary" onclick="printAll()">
-                <svg><use href="#i-print"/></svg>Imprimir Todas
             </button>
             <button class="btn btn-secondary" onclick="goToStep(0)">
                 <svg><use href="#i-rotate"/></svg>Nova Busca
             </button>
+            <div class="spacer"></div>
+            <span class="count-label"><b id="composedCount">0</b> compostas</span>
+            <button class="btn btn-primary" onclick="printAll()">
+                <svg><use href="#i-print"/></svg>Imprimir Todas
+            </button>
         </div>
         <div id="previewGrid" class="preview-grid"></div>
+        <!-- hidden status element for app.js compatibility -->
+        <span id="previewStatus" class="hidden"></span>
     </div>
 
     <!-- Loading Overlay -->
