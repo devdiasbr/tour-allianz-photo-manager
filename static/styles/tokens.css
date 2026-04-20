@@ -2,7 +2,20 @@
   --radius: 2px;
   --space-1: 4px; --space-2: 8px; --space-3: 12px;
   --space-4: 16px; --space-6: 24px; --space-8: 32px; --space-12: 48px;
+  /* overlay / modal — always dark-on-dark, not theme-dependent */
+  --modal-bg: #000;
+  --on-dark: #fff;
+  --on-dark-border: rgba(255,255,255,.15);
+  --on-dark-hover: rgba(255,255,255,.06);
+  --on-dark-hover-close: rgba(255,255,255,.1);
+  --on-dark-info-bg: rgba(0,0,0,.5);
+  --on-dark-info-border: rgba(255,255,255,.1);
+  /* z-index scale */
+  --z-modal: 90; --z-loading: 100; --z-snack: 110;
 }
+
+[data-theme="dark"]  { --scrim: rgba(0,0,0,.72); }
+[data-theme="light"] { --scrim: rgba(0,0,0,.4); }
 
 [data-theme="dark"] {
   --bg: #0c0c0c;        --surface: #131313;       --surface-2: #1a1a1a;

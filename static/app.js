@@ -94,11 +94,6 @@
             });
         }
 
-        function advanceTo(step) {
-            currentStep = step - 1; // Allow advancing
-            goToStepForce(step);
-        }
-
         function goToStepForce(step) {
             if (step === 1) stopWebcam();
             document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
@@ -591,21 +586,14 @@
         }
 
         function showLoading(text, options = {}) {
-            if (!loadingManager) {
-                loadingManager = new LoadingComponent();
-            }
             return loadingManager.show(text, options);
         }
 
         function hideLoading(token = null) {
-            if (!loadingManager) return;
             loadingManager.hide(token);
         }
 
         async function requestJson(url, options = {}, loadingOptions = {}) {
-            if (!loadingManager) {
-                loadingManager = new LoadingComponent();
-            }
             return loadingManager.fetchJson(url, options, loadingOptions);
         }
 
