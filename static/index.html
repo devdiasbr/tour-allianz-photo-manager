@@ -38,17 +38,22 @@
     <!-- Step 0: Folder Picker -->
     <div id="step0" class="content">
         <div class="folder-picker">
-            <div class="section-title">Selecionar Pasta de Fotos</div>
-            <div class="section-sub">Abra o explorador de arquivos ou cole o caminho da pasta</div>
+            <div class="section-title">Pasta da sessão</div>
+            <div class="section-sub">Selecione o diretório com as fotos capturadas no evento.</div>
             <div class="path-row">
-                <button class="btn btn-green" style="font-size:16px;padding:12px 24px" onclick="browseFolder()">📂 Procurar...</button>
+                <button class="btn btn-secondary" onclick="browseFolder()">
+                    <svg><use href="#i-folder"/></svg>Procurar
+                </button>
                 <input type="text" id="pathInput" class="path-input"
-                       placeholder="Ou cole o caminho aqui e pressione Enter"
+                       placeholder="/caminho/para/a/sessão"
                        onkeydown="if(event.key==='Enter') confirmFolder()">
+                <button class="btn btn-primary" onclick="confirmFolder()">
+                    <svg><use href="#i-arrow-right"/></svg>Confirmar
+                </button>
             </div>
             <div id="pathInfo" class="path-info"></div>
             <div id="recentSection" style="display:none">
-                <div style="font-size:13px;color:#666;margin-bottom:8px">📋 Pastas recentes</div>
+                <div style="font-size:13px;color:var(--text-dim);margin-bottom:8px">Pastas recentes</div>
                 <div id="recentList" class="recent-list"></div>
             </div>
         </div>
@@ -64,20 +69,26 @@
                 <canvas id="captureCanvas"></canvas>
             </div>
             <div class="webcam-controls">
-                <button class="btn btn-green" onclick="captureFrame()">📷 Capturar Rosto</button>
-                <label class="btn btn-blue" style="cursor:pointer">
-                    📁 Enviar Foto
+                <button class="btn btn-primary" id="btnCapture" onclick="captureFrame()">
+                    <svg><use href="#i-camera"/></svg>Capturar Rosto
+                </button>
+                <label class="btn btn-secondary" style="cursor:pointer">
+                    <svg><use href="#i-upload"/></svg>Enviar Foto
                     <input type="file" id="fileUpload" accept="image/*" multiple
                            onchange="uploadPhotos(this.files)" style="display:none">
                 </label>
-                <button class="btn btn-gray" onclick="clearFaces()">🗑 Limpar Rostos</button>
+                <button class="btn btn-danger" onclick="clearFaces()">
+                    <svg><use href="#i-trash"/></svg>Limpar Rostos
+                </button>
             </div>
             <div class="captured-section">
                 <strong>Rostos capturados: <span id="faceCount">0</span></strong>
                 <div id="capturedFaces" class="captured-faces"></div>
             </div>
             <div class="webcam-controls" style="margin-top:8px">
-                <button class="btn btn-blue" onclick="startSearch()" id="btnSearch" disabled>🔍 Buscar</button>
+                <button class="btn btn-primary btn-lg" onclick="startSearch()" id="btnSearch" disabled>
+                    <svg><use href="#i-search"/></svg>Buscar Fotos
+                </button>
             </div>
         </div>
     </div>
@@ -91,9 +102,15 @@
             <div class="progress-text" id="scanText">Analisando...</div>
         </div>
         <div class="toolbar">
-            <button class="btn btn-gray" onclick="goToStep(1)">← Voltar</button>
-            <button class="btn btn-gray" onclick="toggleSelectAll()">✓ Selecionar Todas</button>
-            <button class="btn btn-green" onclick="composeSelected()">🖨 Compor e Imprimir</button>
+            <button class="btn btn-ghost" onclick="goToStep(1)">
+                <svg><use href="#i-arrow-left"/></svg>Voltar
+            </button>
+            <button class="btn btn-secondary" onclick="toggleSelectAll()">
+                <svg><use href="#i-check"/></svg>Selecionar Todas
+            </button>
+            <button class="btn btn-primary" onclick="composeSelected()">
+                <svg><use href="#i-print"/></svg>Compor e Imprimir
+            </button>
         </div>
         <div id="photoGrid" class="photo-grid"></div>
     </div>
@@ -103,10 +120,18 @@
         <div class="section-title">Preview e Impressão</div>
         <div class="status" id="previewStatus"></div>
         <div class="toolbar">
-            <button class="btn btn-gray" onclick="goToStep(2)">← Voltar</button>
-            <button class="btn btn-blue" onclick="saveAll()">💾 Salvar Todas</button>
-            <button class="btn btn-green" onclick="printAll()">🖨 Imprimir Todas</button>
-            <button class="btn btn-gray" onclick="goToStep(0)">🔄 Nova Busca</button>
+            <button class="btn btn-ghost" onclick="goToStep(2)">
+                <svg><use href="#i-arrow-left"/></svg>Voltar
+            </button>
+            <button class="btn btn-secondary" onclick="saveAll()">
+                <svg><use href="#i-save"/></svg>Salvar Todas
+            </button>
+            <button class="btn btn-primary" onclick="printAll()">
+                <svg><use href="#i-print"/></svg>Imprimir Todas
+            </button>
+            <button class="btn btn-secondary" onclick="goToStep(0)">
+                <svg><use href="#i-rotate"/></svg>Nova Busca
+            </button>
         </div>
         <div id="previewGrid" class="preview-grid"></div>
     </div>
@@ -133,11 +158,17 @@
 
     <!-- Image Carousel Modal -->
     <div class="modal-overlay" id="imageModal" onclick="handleModalClick(event)">
-        <button class="carousel-close" onclick="closeModal()" title="Fechar">✕</button>
+        <button class="btn btn-icon-only carousel-close" onclick="closeModal()" title="Fechar">
+            <svg><use href="#i-close"/></svg>
+        </button>
         <div class="carousel-container">
-            <button class="carousel-btn" id="carouselPrev" onclick="carouselNav(-1)">‹</button>
+            <button class="btn btn-icon-only carousel-btn" id="carouselPrev" onclick="carouselNav(-1)">
+                <svg><use href="#i-arrow-left"/></svg>
+            </button>
             <img id="modalImage" src="">
-            <button class="carousel-btn" id="carouselNext" onclick="carouselNav(1)">›</button>
+            <button class="btn btn-icon-only carousel-btn" id="carouselNext" onclick="carouselNav(1)">
+                <svg><use href="#i-arrow-right"/></svg>
+            </button>
         </div>
         <div class="carousel-info" id="carouselInfo"></div>
     </div>
