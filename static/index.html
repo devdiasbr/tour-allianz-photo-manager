@@ -63,6 +63,15 @@
             <div class="video-wrapper" id="videoWrap">
                 <video id="webcam" autoplay playsinline muted></video>
                 <canvas id="captureCanvas"></canvas>
+                <div class="face-overlay" id="faceOverlay">
+                  <span class="live-badge" id="liveBadge">PROCURANDO</span>
+                  <div class="bbox hidden" id="faceBbox">
+                    <div class="pulse"></div>
+                    <div class="corner tl"></div><div class="corner tr"></div>
+                    <div class="corner bl"></div><div class="corner br"></div>
+                    <div class="face-label" id="faceLabel">FACE 0%</div>
+                  </div>
+                </div>
             </div>
             <div class="cam-actions">
                 <button class="btn btn-primary" id="btnCapture" onclick="captureFrame()">
@@ -171,6 +180,7 @@
         <div class="carousel-info" id="carouselInfo"></div>
     </div>
 
+    <script type="module" src="/static/face-detection.js"></script>
     <script src="/static/app.js?v=20260419a"></script>
 </body>
 </html>

@@ -72,6 +72,16 @@
         }
 
         // === NAVIGATION ===
+        async function enterCaptureStep() {
+            if (window.__faceDetect) {
+                try { await window.__faceDetect.start(); }
+                catch (e) { console.warn('[face-detect] init failed', e); }
+            }
+        }
+        function leaveCaptureStep() {
+            if (window.__faceDetect) window.__faceDetect.stop();
+        }
+
         function goToStep(step) {
             if (step > currentStep) return; // Can't skip ahead
 
@@ -85,6 +95,8 @@
 
             // Enter new step
             if (step === 1) startWebcam();
+
+            if (step === 1) enterCaptureStep(); else leaveCaptureStep();
 
             // sync tabs
             document.querySelectorAll('.tab').forEach(t => {
@@ -101,6 +113,8 @@
 
             currentStep = step;
             if (step === 1) startWebcam();
+
+            if (step === 1) enterCaptureStep(); else leaveCaptureStep();
 
             // sync tabs
             document.querySelectorAll('.tab').forEach(t => {

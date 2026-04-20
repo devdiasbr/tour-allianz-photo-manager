@@ -60,3 +60,43 @@
   gap: var(--space-4); padding: var(--space-4);
 }
 .preview-grid .photo-card .img-wrap { aspect-ratio: 3/2; }
+
+/* ===== face detection overlay (step 1) ===== */
+#step1 .face-overlay {
+  position: absolute; inset: 0; pointer-events: none;
+  font-family: 'JetBrains Mono', monospace;
+}
+.face-overlay .live-badge {
+  position: absolute; top: 8px; right: 8px; font-size: 9px; letter-spacing: .12em;
+  color: var(--brand); display: flex; align-items: center; gap: 4px;
+}
+.face-overlay .live-badge::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--brand);
+  animation: livepulse 1.2s ease-in-out infinite;
+}
+.face-overlay.searching .live-badge { color: var(--warn); }
+.face-overlay.searching .live-badge::before { background: var(--warn); }
+.face-overlay .bbox {
+  position: absolute; border: 1.5px solid var(--brand);
+  transition: all .08s linear;
+}
+.face-overlay.low-conf .bbox { border-color: var(--warn); }
+.face-overlay .bbox .corner { position: absolute; width: 12px; height: 12px; border: 2px solid var(--brand); }
+.face-overlay.low-conf .bbox .corner { border-color: var(--warn); }
+.face-overlay .bbox .corner.tl { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
+.face-overlay .bbox .corner.tr { top: -2px; right: -2px; border-left: 0; border-bottom: 0; }
+.face-overlay .bbox .corner.bl { bottom: -2px; left: -2px; border-right: 0; border-top: 0; }
+.face-overlay .bbox .corner.br { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
+.face-overlay .bbox .face-label {
+  position: absolute; top: -22px; left: 0; background: var(--brand); color: var(--on-dark);
+  font-size: 9px; letter-spacing: .1em; padding: 2px 6px; white-space: nowrap;
+}
+.face-overlay.low-conf .bbox .face-label { background: var(--warn); color: var(--modal-bg); }
+.face-overlay .bbox .pulse {
+  position: absolute; inset: -3px; border: 1px solid var(--brand);
+  opacity: .4; animation: bboxpulse 1.6s ease-out infinite;
+}
+@keyframes bboxpulse {
+  0% { transform: scale(1); opacity: .5; }
+  100% { transform: scale(1.04); opacity: 0; }
+}
