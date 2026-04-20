@@ -100,3 +100,48 @@
 .btn-lg { padding: 12px 18px; font-size: 13px; }
 .btn-lg svg { width: 16px; height: 16px; }
 .btn-icon-only { padding: 8px; }
+
+/* ===== inputs ===== */
+.input {
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  padding: 9px 12px; font-size: 12px; font-family: 'Inter', sans-serif;
+  transition: border-color .1s; width: 100%;
+}
+.input:focus { outline: none; border-color: var(--brand); }
+.input::placeholder { color: var(--text-fade); }
+.input-mono { font-family: 'JetBrains Mono', monospace; }
+.input-wrap { position: relative; display: inline-flex; flex: 1; min-width: 0; }
+.input-wrap svg.lead {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  width: 14px; height: 14px; color: var(--text-dim); pointer-events: none;
+}
+.input-wrap .input { padding-left: 32px; }
+
+/* ===== toolbar ===== */
+.toolbar {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.toolbar .sep { width: 1px; height: 16px; background: var(--border); margin: 0 var(--space-2); flex-shrink: 0; }
+.toolbar .spacer { flex: 1; }
+.toolbar .count-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim);
+  white-space: nowrap;
+}
+.toolbar .count-label b { color: var(--brand); font-weight: 500; }
+
+/* ===== badges ===== */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 6px; font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+  border: 1px solid currentColor; border-radius: var(--radius);
+  background: transparent;
+}
+.badge-match { color: var(--brand); }
+.badge-warn  { color: var(--warn); }
+.badge-danger { color: var(--danger); }
+.badge-info  { color: var(--text-dim); }
+.badge-solid { background: var(--brand); color: #fff; border-color: var(--brand); }
