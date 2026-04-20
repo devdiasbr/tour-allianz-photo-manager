@@ -91,7 +91,7 @@
   position: absolute; top: -22px; left: 0; background: var(--brand); color: var(--on-dark);
   font-size: 9px; letter-spacing: .1em; padding: 2px 6px; white-space: nowrap;
 }
-.face-overlay.low-conf .bbox .face-label { background: var(--warn); color: var(--modal-bg); }
+.face-overlay.low-conf .bbox .face-label { background: var(--warn); color: var(--on-warn); }
 .face-overlay .bbox .pulse {
   position: absolute; inset: -3px; border: 1px solid var(--brand);
   opacity: .4; animation: bboxpulse 1.6s ease-out infinite;

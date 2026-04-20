@@ -7,6 +7,12 @@ let lastRun = 0;
 const TARGET_FPS = 12;
 const FRAME_MS = 1000 / TARGET_FPS;
 
+// Cached DOM refs — populated once at start() to avoid per-frame querySelector
+let elOverlay = null;
+let elBbox = null;
+let elLabel = null;
+let elBadge = null;
+
 async function init() {
   if (detector) return detector;
   const fileset = await FilesetResolver.forVisionTasks('/static/vendor/mediapipe');
@@ -30,17 +36,14 @@ function pickLargest(detections) {
 }
 
 function render(detection, video) {
-  const overlay = document.getElementById('faceOverlay');
-  const bbox = document.getElementById('faceBbox');
-  const label = document.getElementById('faceLabel');
-  const badge = document.getElementById('liveBadge');
+  if (!elOverlay || !elBbox || !elLabel || !elBadge) return;
   const btnCapture = document.getElementById('btnCapture');
 
   if (!detection) {
-    bbox.classList.add('hidden');
-    overlay.classList.add('searching');
-    overlay.classList.remove('low-conf');
-    badge.textContent = 'PROCURANDO';
+    elBbox.classList.add('hidden');
+    elOverlay.classList.add('searching');
+    elOverlay.classList.remove('low-conf');
+    elBadge.textContent = 'PROCURANDO';
     if (btnCapture) btnCapture.disabled = true;
     return;
   }
@@ -55,15 +58,15 @@ function render(detection, video) {
   const scaleX = rect.width / vw;
   const scaleY = rect.height / vh;
 
-  bbox.classList.remove('hidden');
-  overlay.classList.remove('searching');
-  overlay.classList.toggle('low-conf', lowConf);
-  bbox.style.left = `${b.originX * scaleX}px`;
-  bbox.style.top = `${b.originY * scaleY}px`;
-  bbox.style.width = `${b.width * scaleX}px`;
-  bbox.style.height = `${b.height * scaleY}px`;
-  label.textContent = lowConf ? 'FACE BAIXA QUALIDADE' : `FACE ${Math.round(conf * 100)}%`;
-  badge.textContent = 'DETECTANDO';
+  elBbox.classList.remove('hidden');
+  elOverlay.classList.remove('searching');
+  elOverlay.classList.toggle('low-conf', lowConf);
+  elBbox.style.left = `${b.originX * scaleX}px`;
+  elBbox.style.top = `${b.originY * scaleY}px`;
+  elBbox.style.width = `${b.width * scaleX}px`;
+  elBbox.style.height = `${b.height * scaleY}px`;
+  elLabel.textContent = lowConf ? 'FACE BAIXA QUALIDADE' : `FACE ${Math.round(conf * 100)}%`;
+  elBadge.textContent = 'DETECTANDO';
   if (btnCapture) btnCapture.disabled = lowConf;
 }
 
@@ -90,6 +93,10 @@ export async function start() {
   }
   const video = document.getElementById('webcam');
   if (!video) return;
+  elOverlay = document.getElementById('faceOverlay');
+  elBbox = document.getElementById('faceBbox');
+  elLabel = document.getElementById('faceLabel');
+  elBadge = document.getElementById('liveBadge');
   running = true;
   lastRun = 0;
   loop(video);
@@ -97,11 +104,10 @@ export async function start() {
 
 export function stop() {
   running = false;
-  if (rafId) cancelAnimationFrame(rafId);
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
   const btnCapture = document.getElementById('btnCapture');
   if (btnCapture) btnCapture.disabled = false;
-  const bbox = document.getElementById('faceBbox');
-  if (bbox) bbox.classList.add('hidden');
+  if (elBbox) elBbox.classList.add('hidden');
 }
 
 window.__faceDetect = { start, stop };

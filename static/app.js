@@ -72,56 +72,35 @@
         }
 
         // === NAVIGATION ===
-        async function enterCaptureStep() {
+        async function _applyStep(step) {
+            document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`step${step}`).classList.remove('hidden');
+            currentStep = step;
+            if (step === 1) startWebcam(); else stopWebcam();
             if (window.__faceDetect) {
-                try { await window.__faceDetect.start(); }
-                catch (e) { console.warn('[face-detect] init failed', e); }
+                if (step === 1) {
+                    try { await window.__faceDetect.start(); }
+                    catch (e) { console.warn('[face-detect] init failed', e); }
+                } else {
+                    window.__faceDetect.stop();
+                }
             }
-        }
-        function leaveCaptureStep() {
-            if (window.__faceDetect) window.__faceDetect.stop();
+            document.querySelectorAll('.tab').forEach(t => {
+                const n = Number(t.dataset.step);
+                t.classList.toggle('active', n === step);
+                t.classList.toggle('done', n < step);
+            });
         }
 
-        function goToStep(step) {
+        async function goToStep(step) {
             if (step > currentStep) return; // Can't skip ahead
-
-            // Leave current step
             if (currentStep === 1) stopWebcam();
-
-            document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`step${step}`).classList.remove('hidden');
-
-            currentStep = step;
-
-            // Enter new step
-            if (step === 1) startWebcam();
-
-            if (step === 1) enterCaptureStep(); else leaveCaptureStep();
-
-            // sync tabs
-            document.querySelectorAll('.tab').forEach(t => {
-                const n = Number(t.dataset.step);
-                t.classList.toggle('active', n === step);
-                t.classList.toggle('done', n < step);
-            });
+            await _applyStep(step);
         }
 
-        function goToStepForce(step) {
-            if (step === 1) stopWebcam();
-            document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`step${step}`).classList.remove('hidden');
-
-            currentStep = step;
-            if (step === 1) startWebcam();
-
-            if (step === 1) enterCaptureStep(); else leaveCaptureStep();
-
-            // sync tabs
-            document.querySelectorAll('.tab').forEach(t => {
-                const n = Number(t.dataset.step);
-                t.classList.toggle('active', n === step);
-                t.classList.toggle('done', n < step);
-            });
+        async function goToStepForce(step) {
+            if (currentStep === 1) stopWebcam();
+            await _applyStep(step);
         }
 
         // === FOLDER PICKER ===
