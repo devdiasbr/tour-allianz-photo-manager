@@ -247,12 +247,7 @@
 
             let loadingToken = null;
             try {
-                loadingToken = showLoading('Capturando e processando rosto...', {
-                    size: 'medium',
-                    color: 'primary',
-                    mode: 'circular',
-                    speed: 0.95
-                });
+                loadingToken = showLoading('Capturando e processando rosto...');
                 const res = await fetch('/api/face/capture', { method: 'POST', body: formData });
                 const data = await res.json();
 
@@ -296,12 +291,7 @@
 
             let loadingToken = null;
             try {
-                loadingToken = showLoading('Enviando foto e detectando rostos...', {
-                    size: 'medium',
-                    color: 'primary',
-                    mode: 'linear',
-                    speed: 0.9
-                });
+                loadingToken = showLoading('Enviando foto e detectando rostos...');
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
                     const formData = new FormData();
@@ -380,12 +370,7 @@
                 ? `Buscando... 0/${fallbackTotal} processadas`
                 : `Buscando...`;
 
-            const loadingToken = showLoading(progressText(0, fallbackTotal, 0), {
-                size: 'medium',
-                color: 'primary',
-                mode: 'linear',
-                speed: 0.9
-            });
+            const loadingToken = showLoading(progressText(0, fallbackTotal, 0));
 
             try {
                 const startRes = await fetch('/api/scan', { method: 'POST' });
@@ -528,11 +513,7 @@
                         selected: Array.from(selectedPhotos),
                         orientations: orientations
                     })
-                }, {
-                    text: 'Compondo imagens...',
-                    mode: 'linear',
-                    color: 'secondary'
-                });
+                }, { text: 'Compondo imagens...' });
 
                 if (data.ok) {
                     composedFiles = data.files;
@@ -582,10 +563,7 @@
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({files: composedFiles})
-                }, {
-                    text: 'Enviando para impressão...',
-                    size: 'small'
-                });
+                }, { text: 'Enviando para impressão...' });
                 showSnackbar(`${data.printed} imagem(ns) abertas — clique em Imprimir no visualizador para escolher a impressora`);
             } catch (err) {
                 showSnackbar('Erro: ' + err.message);
@@ -606,6 +584,7 @@
             stack.appendChild(el);
             setTimeout(() => { if (el.parentNode) el.remove(); }, ms);
         }
+        window.showSnack = showSnack;
 
         function showSnackbar(msg) {
             showSnack(msg, 'info');
