@@ -574,14 +574,14 @@
             document.getElementById('previewStatus').textContent =
                 `${composedFiles.length} imagens compostas e prontas`;
 
-            composedFiles.forEach(f => {
+            composedFiles.forEach((f, idx) => {
                 const card = document.createElement('div');
                 card.className = 'preview-card';
                 const url = `/api/output/${encodeOutputPath(f.filename)}`;
                 const label = f.filename.split('/').pop();
                 card.innerHTML = `
                     <img src="${url}"
-                         onclick="showModal('${url}')"
+                         onclick="showModal(${idx}, 'composed')"
                          loading="lazy">
                     <div class="preview-card-info">${label}</div>
                 `;
@@ -639,8 +639,16 @@
 
         // === CAROUSEL ===
         let carouselIndex = 0;
+        // 'matches' shows /api/photo originals from matchResults (gallery step).
+        // 'composed' shows /api/output composites from composedFiles (print step).
+        let carouselSource = 'matches';
 
-        function showModal(index) {
+        function carouselItems() {
+            return carouselSource === 'composed' ? composedFiles : matchResults;
+        }
+
+        function showModal(index, source = 'matches') {
+            carouselSource = source;
             carouselIndex = index;
             updateCarousel();
             document.getElementById('imageModal').classList.add('show');
@@ -660,25 +668,34 @@
         }
 
         function updateCarousel() {
-            const m = matchResults[carouselIndex];
+            const items = carouselItems();
+            const m = items[carouselIndex];
             if (!m) return;
             const img = document.getElementById('modalImage');
-            // Load full-res photo by filename (uses current session on server)
-            const fullUrl = `/api/photo?filename=${encodeURIComponent(m.filename)}`;
-            img.onerror = () => {
-                img.onerror = null;
-                if (m.thumbnail_url) img.src = m.thumbnail_url;
-            };
-            img.src = fullUrl;
-            document.getElementById('carouselInfo').innerHTML =
-                `<strong>${carouselIndex + 1}</strong> / ${matchResults.length} — ${m.filename} — Confiança: ${m.confidence}%`;
+            img.onerror = null;
+            if (carouselSource === 'composed') {
+                img.src = `/api/output/${encodeOutputPath(m.filename)}`;
+                const label = m.filename.split('/').pop();
+                document.getElementById('carouselInfo').innerHTML =
+                    `<strong>${carouselIndex + 1}</strong> / ${items.length} — ${label}`;
+            } else {
+                const fullUrl = `/api/photo?filename=${encodeURIComponent(m.filename)}`;
+                img.onerror = () => {
+                    img.onerror = null;
+                    if (m.thumbnail_url) img.src = m.thumbnail_url;
+                };
+                img.src = fullUrl;
+                document.getElementById('carouselInfo').innerHTML =
+                    `<strong>${carouselIndex + 1}</strong> / ${items.length} — ${m.filename} — Confiança: ${m.confidence}%`;
+            }
             document.getElementById('carouselPrev').disabled = carouselIndex === 0;
-            document.getElementById('carouselNext').disabled = carouselIndex === matchResults.length - 1;
+            document.getElementById('carouselNext').disabled = carouselIndex === items.length - 1;
         }
 
         function carouselNav(dir) {
+            const items = carouselItems();
             const newIdx = carouselIndex + dir;
-            if (newIdx >= 0 && newIdx < matchResults.length) {
+            if (newIdx >= 0 && newIdx < items.length) {
                 carouselIndex = newIdx;
                 updateCarousel();
             }

@@ -45,14 +45,13 @@ def get_face_locations(image_rgb: np.ndarray) -> list[tuple]:
     )
 
 
-def get_detection_diagnostics(
-    image_rgb: np.ndarray,
-    upsample: int = FACE_UPSAMPLE,
-    model: str = FACE_DETECTION_MODEL,
-) -> dict:
-    locations = face_recognition.face_locations(
-        image_rgb, number_of_times_to_upsample=upsample, model=model
-    )
+def diagnostics_from_locations(image_rgb: np.ndarray, locations: list) -> dict:
+    """Pure-math diagnostics derived from already-computed face locations.
+
+    Splitting this from detection lets `_scan_variant` avoid running
+    face_recognition.face_locations twice per pass (once for matching, once
+    for the diagnostic log) — that duplicate call dominated scan time.
+    """
     gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
     brightness = float(np.mean(gray))
     sharpness = float(cv2.Laplacian(gray, cv2.CV_64F).var())
@@ -71,6 +70,21 @@ def get_detection_diagnostics(
         "brightness": round(brightness, 2),
         "sharpness": round(sharpness, 2),
     }
+
+
+def get_detection_diagnostics(
+    image_rgb: np.ndarray,
+    upsample: int = FACE_UPSAMPLE,
+    model: str = FACE_DETECTION_MODEL,
+) -> dict:
+    """Convenience wrapper: detect faces and return diagnostics.
+
+    Prefer `diagnostics_from_locations` when you already have detections.
+    """
+    locations = face_recognition.face_locations(
+        image_rgb, number_of_times_to_upsample=upsample, model=model
+    )
+    return diagnostics_from_locations(image_rgb, locations)
 
 
 def load_image_rgb_with_metadata(image_path: str) -> tuple[np.ndarray, dict]:
@@ -113,27 +127,6 @@ def _resize_for_scan(image: np.ndarray, max_width: int) -> tuple[np.ndarray, flo
     return image, 1.0
 
 
-def _encode_with_cache(
-    image: np.ndarray,
-    locations: list,
-    sha: str,
-    variant: str,
-    stage: str,
-) -> list[np.ndarray]:
-    """Compute face encodings, hitting the disk cache when possible.
-
-    Cache key composes the file sha with the variant/stage so different
-    pipeline branches (base vs clahe, resized vs full) get distinct entries.
-    """
-    cache_key = f"{sha}:{variant}:{stage}"
-    cached = encoding_cache.get_encodings(cache_key)
-    if cached is not None:
-        return cached
-    encs = face_recognition.face_encodings(image, locations)
-    encoding_cache.put_encodings(cache_key, encs)
-    return encs
-
-
 def _scan_variant(
     image: np.ndarray,
     reference_encodings: list[np.ndarray],
@@ -142,15 +135,22 @@ def _scan_variant(
     variant_name: str,
     sha: str,
 ) -> dict:
+    """Run one detection pipeline (resized → full-res escalation) and return
+    detection + encodings + match outcome. Photo-level caching happens one
+    layer up in `_process_one_photo`, so this routine always recomputes."""
     passes = []
     matched = False
     best_dist = float("inf")
+    needs_enc = bool(reference_encodings)
 
     small, scale = _resize_for_scan(image, FACE_SCAN_MAX_WIDTH)
     locations = face_recognition.face_locations(
         small, number_of_times_to_upsample=upsample, model=FACE_DETECTION_MODEL
     )
-    diag_small = get_detection_diagnostics(small, upsample=upsample, model=FACE_DETECTION_MODEL)
+    encodings: list[np.ndarray] = (
+        face_recognition.face_encodings(small, locations) if locations and needs_enc else []
+    )
+    diag_small = diagnostics_from_locations(small, locations)
     passes.append({
         "variant": variant_name,
         "stage": "resized",
@@ -160,9 +160,9 @@ def _scan_variant(
 
     final_locations = locations
     final_scale = scale
+    final_encodings = encodings
 
-    if locations and reference_encodings:
-        encodings = _encode_with_cache(small, locations, sha, variant_name, "resized")
+    if encodings:
         for enc in encodings:
             distances = face_recognition.face_distance(reference_encodings, enc)
             min_dist = float(np.min(distances))
@@ -171,20 +171,27 @@ def _scan_variant(
             if min_dist <= tolerance:
                 matched = True
 
+    # Escalate to full-resolution whenever the resized pass didn't match.
+    # Resized encodings are noticeably less accurate, so even when faces were
+    # detected at low res it's worth re-encoding at full res for a tighter
+    # distance against the reference. Also, full-res detection sometimes finds
+    # faces the resized pass missed entirely.
     if not matched and scale < 1.0:
-        full_upsample = max(1, upsample - 1)
+        full_upsample = max(1, upsample - 1) if upsample > 1 else upsample
         full_locations = face_recognition.face_locations(
             image, number_of_times_to_upsample=full_upsample, model=FACE_DETECTION_MODEL
         )
-        diag_full = get_detection_diagnostics(image, upsample=full_upsample, model=FACE_DETECTION_MODEL)
+        full_encodings: list[np.ndarray] = (
+            face_recognition.face_encodings(image, full_locations) if full_locations and needs_enc else []
+        )
+        diag_full = diagnostics_from_locations(image, full_locations)
         passes.append({
             "variant": variant_name,
             "stage": "full",
             "resolution": f"{image.shape[1]}x{image.shape[0]}",
             **diag_full,
         })
-        if full_locations and reference_encodings:
-            full_encodings = _encode_with_cache(image, full_locations, sha, variant_name, "full")
+        if full_encodings:
             for enc in full_encodings:
                 distances = face_recognition.face_distance(reference_encodings, enc)
                 min_dist = float(np.min(distances))
@@ -192,17 +199,48 @@ def _scan_variant(
                     best_dist = min_dist
                 if min_dist <= tolerance:
                     matched = True
-            if matched:
-                final_locations = full_locations
-                final_scale = 1.0
+        # Always promote full-res detection results to the canonical output
+        # when full-res actually found faces — those encodings are higher
+        # quality and what we want in the per-photo cache, regardless of
+        # whether they matched the *current* reference.
+        if full_locations:
+            final_locations = full_locations
+            final_scale = 1.0
+            final_encodings = full_encodings
 
     return {
         "matched": matched,
         "best_dist": best_dist,
         "final_locations": final_locations,
         "final_scale": final_scale,
+        "final_encodings": final_encodings,
         "passes": passes,
     }
+
+
+def _photo_cache_key(sha: str) -> str:
+    """Per-photo cache key. Includes tunables that affect detection so a config
+    change automatically invalidates stale entries."""
+    return f"photo:{sha}:u{FACE_UPSAMPLE}:w{FACE_SCAN_MAX_WIDTH}:m{FACE_DETECTION_MODEL}"
+
+
+def _match_against_reference(
+    encodings: list[np.ndarray],
+    reference_encodings: list[np.ndarray],
+    tolerance: float,
+) -> tuple[bool, float]:
+    if not encodings or not reference_encodings:
+        return False, float("inf")
+    matched = False
+    best = float("inf")
+    for enc in encodings:
+        distances = face_recognition.face_distance(reference_encodings, enc)
+        d = float(np.min(distances))
+        if d < best:
+            best = d
+        if d <= tolerance:
+            matched = True
+    return matched, best
 
 
 def _process_one_photo(
@@ -210,10 +248,40 @@ def _process_one_photo(
     reference_encodings: list[np.ndarray],
     tolerance: float,
 ) -> tuple[str, dict]:
-    """Worker body for a single photo. Returns (photo_path, payload)."""
+    """Worker body for a single photo. Returns (photo_path, payload).
+
+    Fast path: hash the file (no decode), check the per-photo cache. On hit
+    we already have the encodings + original-resolution face boxes — just
+    match them against the current reference set and return. Re-opening a
+    folder that was previously scanned costs only the file hash per photo.
+
+    Slow path (cache miss): decode the image, run the base/full/CLAHE
+    pipeline, persist the best-available encodings + boxes for next time.
+    """
     try:
-        image, metadata = load_image_rgb_with_metadata(photo_path)
         sha12 = hash_file_sha12(photo_path)
+        key = _photo_cache_key(sha12)
+        cached = encoding_cache.get_detection(key)
+
+        if cached is not None:
+            encs = cached.get("encs", []) or []
+            orig_locs = cached.get("locs", []) or []
+            matched, best_dist = _match_against_reference(encs, reference_encodings, tolerance)
+            return photo_path, {
+                "ok": True,
+                "sha": sha12,
+                "source": "cache",
+                "matched": matched,
+                "best_dist": best_dist,
+                "orig_locations": orig_locs,
+                "faces_detected": len(encs),
+                "passes": [{"variant": "cache", "stage": "hit",
+                            "faces_detected": len(encs),
+                            "resolution": "(from cache)"}],
+                "metadata": {},
+            }
+
+        image, metadata = load_image_rgb_with_metadata(photo_path)
 
         base_result = _scan_variant(
             image=image,
@@ -226,9 +294,12 @@ def _process_one_photo(
 
         selected_result = base_result
         enhanced_result = None
-        has_any_face = any(p["faces_detected"] > 0 for p in base_result["passes"])
 
-        if not base_result["matched"] and not has_any_face:
+        # Run CLAHE whenever base didn't match — even when base detected faces.
+        # CLAHE-enhanced encodings are sometimes a better fit for low-light or
+        # backlit subjects, and the cost is one extra pipeline run on the
+        # cache-miss path only (cache hits skip this entirely).
+        if not base_result["matched"]:
             enhanced_image = enhance_for_detection(image)
             enhanced_result = _scan_variant(
                 image=enhanced_image,
@@ -238,15 +309,36 @@ def _process_one_photo(
                 variant_name="clahe",
                 sha=sha12,
             )
-            if enhanced_result["matched"] or any(p["faces_detected"] > 0 for p in enhanced_result["passes"]):
+            # Prefer CLAHE result if it matched, or if it found more faces
+            # (better recall to cache for future scans).
+            base_face_count = len(base_result["final_encodings"])
+            clahe_face_count = len(enhanced_result["final_encodings"])
+            if enhanced_result["matched"] or clahe_face_count > base_face_count:
                 selected_result = enhanced_result
+
+        # Compute original-resolution boxes once and cache them. Also cache
+        # the encodings (or [] for "scanned, no face") so a rescan with any
+        # reference set can match instantly.
+        final_locations = selected_result["final_locations"]
+        final_scale = selected_result["final_scale"]
+        orig_locs = [
+            (int(t / final_scale), int(r / final_scale), int(b / final_scale), int(l / final_scale))
+            for (t, r, b, l) in final_locations
+        ]
+
+        encs_used = selected_result["final_encodings"]
+        encoding_cache.put_detection(key, orig_locs, encs_used)
 
         return photo_path, {
             "ok": True,
             "sha": sha12,
-            "metadata": metadata,
-            "selected": selected_result,
+            "source": "computed",
+            "matched": selected_result["matched"],
+            "best_dist": selected_result["best_dist"],
+            "orig_locations": orig_locs,
+            "faces_detected": len(encs_used),
             "passes": base_result["passes"] + ([] if not enhanced_result else enhanced_result["passes"]),
+            "metadata": metadata,
         }
     except Exception as e:
         return photo_path, {"ok": False, "error": str(e)}
@@ -261,9 +353,10 @@ def scan_session(
     """Scan all photos in a session folder and return matches.
 
     A photo matches if ANY face in it matches ANY reference encoding.
-    Parallelized with a ThreadPoolExecutor (face_recognition releases the GIL).
-    Encodings are memoized on disk by sha12+variant; thumbnails for matches
-    are written to the on-disk cache and served via /api/thumbnail/{sha}.jpg.
+    Sequential by default (dlib/opencv in parallel threads on Windows has
+    crashed the process natively in this setup). Encodings are memoized on
+    disk per-photo by sha12+variant; on rescans only the cache lookup runs.
+    Set env `FACE_SCAN_WORKERS=N` (N>=2) to opt in to threaded scanning.
     """
     seen = set()
     photo_files = []
@@ -276,88 +369,114 @@ def scan_session(
     photo_files.sort()
 
     total = len(photo_files)
-    workers = max(1, min(8, (os.cpu_count() or 4)))
+    try:
+        workers_env = int(os.environ.get("FACE_SCAN_WORKERS", "1"))
+    except ValueError:
+        workers_env = 1
+    workers = max(1, min(workers_env, total or 1))
     log.info(
         f"Scanning {total} photos workers={workers} tolerance={tolerance} "
         f"max_width={FACE_SCAN_MAX_WIDTH} upsample={FACE_UPSAMPLE}"
     )
 
     results: list[MatchResult] = []
-    progress_lock = threading.Lock()
-    done_count = {"n": 0}
 
-    def _bump_progress():
-        with progress_lock:
-            done_count["n"] += 1
-            n = done_count["n"]
-        if progress_callback:
-            try:
-                progress_callback(n, total)
-            except Exception:
-                log.debug("progress_callback raised; ignoring", exc_info=True)
+    def _consume(photo_path: str, payload: dict, done_n: int) -> None:
+        if not payload["ok"]:
+            log.warning(f"  ERROR: {os.path.basename(photo_path)}: {payload['error']}")
+            return
 
-    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="photo") as pool:
-        futures = {
-            pool.submit(_process_one_photo, p, reference_encodings, tolerance): p
-            for p in photo_files
+        sha12 = payload["sha"]
+        metadata = payload.get("metadata") or {}
+        matched = payload["matched"]
+        best_dist = payload["best_dist"]
+        orig_locations = payload["orig_locations"]
+        source = payload.get("source", "computed")
+
+        diagnostic_payload = {
+            "file": os.path.basename(photo_path),
+            "hash": sha12,
+            "source": source,
+            "capture_timestamp": metadata.get("capture_timestamp"),
+            "orientation_exif": metadata.get("orientation_exif"),
+            "rotated": metadata.get("rotated"),
+            "size": metadata.get("size"),
+            "matched": matched,
+            "best_distance": None if best_dist == float("inf") else round(best_dist, 6),
+            "passes": payload["passes"],
         }
-        for fut in as_completed(futures):
-            photo_path = futures[fut]
-            payload = fut.result()[1]
+        log.info("SCAN_DIAG %s", json.dumps(diagnostic_payload, ensure_ascii=False))
+
+        if matched:
             try:
-                if not payload["ok"]:
-                    log.warning(f"  ERROR: {os.path.basename(photo_path)}: {payload['error']}")
-                    continue
-
-                sha12 = payload["sha"]
-                metadata = payload["metadata"]
-                selected = payload["selected"]
-                matched = selected["matched"]
-                best_dist = selected["best_dist"]
-                final_locations = selected["final_locations"]
-                final_scale = selected["final_scale"]
-
-                diagnostic_payload = {
-                    "file": os.path.basename(photo_path),
-                    "hash": sha12,
-                    "capture_timestamp": metadata.get("capture_timestamp"),
-                    "orientation_exif": metadata.get("orientation_exif"),
-                    "rotated": metadata.get("rotated"),
-                    "size": metadata.get("size"),
-                    "matched": matched,
-                    "best_distance": None if best_dist == float("inf") else round(best_dist, 6),
-                    "passes": payload["passes"],
-                }
-                log.info("SCAN_DIAG %s", json.dumps(diagnostic_payload, ensure_ascii=False))
-
-                if matched:
-                    orig_locations = [
-                        (int(t / final_scale), int(r / final_scale), int(b / final_scale), int(l / final_scale))
-                        for t, r, b, l in final_locations
-                    ]
-                    try:
-                        encoding_cache.write_thumbnail(sha12, photo_path)
-                    except Exception:
-                        log.warning(f"thumbnail write failed for {os.path.basename(photo_path)}", exc_info=True)
-                    results.append(MatchResult(
-                        file_path=photo_path,
-                        sha=sha12,
-                        best_distance=best_dist,
-                        face_locations=orig_locations,
-                    ))
-                    log.info(f"  MATCH: {os.path.basename(photo_path)} (dist={best_dist:.3f})")
+                encoding_cache.write_thumbnail(sha12, photo_path)
+            except Exception:
+                log.warning(f"thumbnail write failed for {os.path.basename(photo_path)}", exc_info=True)
+            results.append(MatchResult(
+                file_path=photo_path,
+                sha=sha12,
+                best_distance=best_dist,
+                face_locations=orig_locations,
+            ))
+            tag = "MATCH*" if source == "cache" else "MATCH"
+            log.info(f"  {tag} ({done_n}/{total}): {os.path.basename(photo_path)} (dist={best_dist:.3f})")
+        else:
+            visible_faces = payload.get("faces_detected", 0)
+            if visible_faces > 0:
+                if best_dist == float("inf"):
+                    log.info(f"  NO MATCH ({done_n}/{total}): {os.path.basename(photo_path)} (best_dist=inf, faces={visible_faces})")
                 else:
-                    visible_faces = max((p["faces_detected"] for p in diagnostic_payload["passes"]), default=0)
-                    if visible_faces > 0:
-                        if best_dist == float("inf"):
-                            log.info(f"  NO MATCH: {os.path.basename(photo_path)} (best_dist=inf, faces={visible_faces})")
-                        else:
-                            log.info(f"  NO MATCH: {os.path.basename(photo_path)} (best_dist={best_dist:.3f}, faces={visible_faces})")
-                    else:
-                        log.info(f"  NO FACE: {os.path.basename(photo_path)}")
-            finally:
-                _bump_progress()
+                    log.info(f"  NO MATCH ({done_n}/{total}): {os.path.basename(photo_path)} (best_dist={best_dist:.3f}, faces={visible_faces})")
+            else:
+                log.info(f"  NO FACE ({done_n}/{total}): {os.path.basename(photo_path)}")
+
+    if workers <= 1:
+        for i, photo_path in enumerate(photo_files, 1):
+            try:
+                _, payload = _process_one_photo(photo_path, reference_encodings, tolerance)
+                _consume(photo_path, payload, i)
+            except Exception:
+                log.exception(f"  CRASH: {os.path.basename(photo_path)}")
+            if progress_callback:
+                try:
+                    progress_callback(i, total)
+                except Exception:
+                    log.debug("progress_callback raised; ignoring", exc_info=True)
+            # Persist incrementally so a mid-scan crash doesn't lose all work.
+            if i % 5 == 0:
+                try:
+                    encoding_cache.flush()
+                except Exception:
+                    log.warning("encoding_cache.flush failed mid-scan", exc_info=True)
+    else:
+        progress_lock = threading.Lock()
+        done_count = {"n": 0}
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="photo") as pool:
+            futures = {
+                pool.submit(_process_one_photo, p, reference_encodings, tolerance): p
+                for p in photo_files
+            }
+            for fut in as_completed(futures):
+                photo_path = futures[fut]
+                try:
+                    payload = fut.result()[1]
+                except Exception:
+                    log.exception(f"  CRASH: {os.path.basename(photo_path)}")
+                    payload = {"ok": False, "error": "worker crashed"}
+                with progress_lock:
+                    done_count["n"] += 1
+                    n = done_count["n"]
+                _consume(photo_path, payload, n)
+                if progress_callback:
+                    try:
+                        progress_callback(n, total)
+                    except Exception:
+                        log.debug("progress_callback raised; ignoring", exc_info=True)
 
     results.sort(key=lambda r: r.best_distance)
+    try:
+        encoding_cache.flush()
+    except Exception:
+        log.warning("encoding_cache.flush failed", exc_info=True)
     log.info(f"Scan complete: {len(results)}/{total} matches")
     return results

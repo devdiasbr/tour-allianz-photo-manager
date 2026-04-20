@@ -560,23 +560,34 @@ async def get_output_file(filepath: str):
 
 @app.post("/api/print")
 async def print_photos(req: PrintRequest):
-    """Open composed photos in the default viewer so the user can pick a printer.
+    """Launch the Windows "Print Pictures" wizard for the selected photos.
 
-    The Windows ShellExecute "print" verb sends straight to the default printer
-    with no dialog — bad UX for a kiosk where the user wants to choose printer,
-    paper size, and copies. Opening with the default verb launches the system
-    photo viewer, whose Print button invokes the native "Print Pictures" wizard.
+    Passes all valid files in a single Explorer selection so the user gets
+    ONE wizard with printer, paper size, layout and copy selection — instead
+    of N separate viewer windows. Uses the same Explorer "print" command
+    you'd get by selecting images and pressing Print in the file ribbon.
     """
     try:
-        opened = 0
+        valid_paths = []
         for f in req.files:
             path = f.output
             if not path or not _is_within(path, OUTPUT_DIR):
                 log.warning(f"Print rejected (outside OUTPUT_DIR): {path!r}")
                 continue
             if os.path.exists(path):
-                os.startfile(path)
-                opened += 1
+                valid_paths.append(os.path.abspath(path))
+
+        # Invoke the Print Pictures wizard via the shell "print" verb. For
+        # JPEGs on Win10/11 this opens the dialog with printer selection,
+        # paper size, layout and copies. Empty input is a no-op (returns 0).
+        opened = 0
+        for p in valid_paths:
+            try:
+                os.startfile(p, "print")
+            except OSError:
+                log.exception(f"print verb failed for {p}; falling back to default app")
+                os.startfile(p)
+            opened += 1
         return {"ok": True, "printed": opened}
     except Exception as e:
         log.exception("print_photos failed")
