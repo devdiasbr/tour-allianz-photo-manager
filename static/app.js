@@ -166,7 +166,7 @@
             const info = document.getElementById('pathInfo');
             if (!path) { info.className = 'path-info err'; info.textContent = 'Digite o caminho da pasta.'; return; }
 
-            const { data } = await requestJson('/api/session/select', {
+            const data = await requestJson('/api/session/select', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({path})
@@ -494,7 +494,7 @@
             }
 
             try {
-                const { data } = await requestJson('/api/compose', {
+                const data = await requestJson('/api/compose', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -547,7 +547,7 @@
         // === PRINT ===
         async function printAll() {
             try {
-                const { data } = await requestJson('/api/print', {
+                const data = await requestJson('/api/print', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({files: composedFiles})
