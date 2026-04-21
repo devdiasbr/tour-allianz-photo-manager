@@ -83,7 +83,7 @@
 .btn:hover:not(:disabled) { background: var(--surface-2); }
 .btn:disabled { opacity: .35; cursor: not-allowed; }
 
-.btn-primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+.btn-primary { background: var(--brand); color: var(--on-dark); border-color: var(--brand); }
 .btn-primary:hover:not(:disabled) { background: var(--brand-hover); border-color: var(--brand-hover); }
 
 .btn-secondary { border-color: var(--border-strong); color: var(--text); }
@@ -144,7 +144,7 @@
 .badge-warn  { color: var(--warn); }
 .badge-danger { color: var(--danger); }
 .badge-info  { color: var(--text-dim); }
-.badge-solid { background: var(--brand); color: #fff; border-color: var(--brand); }
+.badge-solid { background: var(--brand); color: var(--on-dark); border-color: var(--brand); }
 
 /* ===== photo card ===== */
 .photo-card {
@@ -167,7 +167,7 @@
 .photo-card.match .img-wrap::before {
   content: 'MATCH'; position: absolute; top: 6px; left: 6px; z-index: 2;
   font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .1em;
-  padding: 2px 5px; background: var(--brand); color: #fff; pointer-events: none;
+  padding: 2px 5px; background: var(--brand); color: var(--on-dark); pointer-events: none;
 }
 .photo-card.selected {
   outline: 1px solid var(--brand); box-shadow: inset 0 0 0 1px var(--brand);
@@ -193,7 +193,7 @@
 .face-chip .rm {
   position: absolute; top: 2px; right: 2px;
   width: 14px; height: 14px; border-radius: 50%;
-  background: var(--danger); color: #fff;
+  background: var(--danger); color: var(--on-dark);
   font-size: 9px; display: none; place-items: center; cursor: pointer;
   border: none; padding: 0; line-height: 1;
 }
