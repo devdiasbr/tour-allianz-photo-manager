@@ -92,8 +92,20 @@
             });
         }
 
+        const STEP_LABELS = ['Sessão', 'Captura', 'Fotos', 'Imprimir'];
+
         async function goToStep(step) {
             if (step > currentStep) return; // Can't skip ahead
+            if (step === currentStep) return;
+            if (currentStep > 0) {
+                const ok = await showConfirm({
+                    title: `Voltar para ${STEP_LABELS[step]}?`,
+                    body: 'Todo o progresso da sessão atual será perdido.',
+                    okText: 'Voltar',
+                    cancelText: 'Cancelar'
+                });
+                if (!ok) return;
+            }
             if (currentStep === 1) stopWebcam();
             await _applyStep(step);
         }
@@ -404,6 +416,7 @@
                         matchResults.forEach(m => { orientations[m.file_path] = 'landscape'; });
                         const matchesEl = document.getElementById('scanMatches');
                         if (matchesEl) matchesEl.textContent = matchResults.length;
+                        updateStatusBar({ matches: matchResults.length });
                         renderPhotoGrid();
                         document.getElementById('gridStatus').textContent =
                             `${matchResults.length} fotos encontradas, ${matchResults.length} selecionadas`;
@@ -677,6 +690,45 @@
             }
         }
         window.updateStatusBar = updateStatusBar;
+
+        function showConfirm({ title, body, okText = 'Confirmar', cancelText = 'Cancelar' } = {}) {
+            return new Promise(resolve => {
+                const dlg = document.getElementById('confirmDialog');
+                const okBtn = document.getElementById('confirmOk');
+                const cancelBtn = document.getElementById('confirmCancel');
+                if (title) document.getElementById('confirmTitle').textContent = title;
+                if (body) document.getElementById('confirmBody').textContent = body;
+                okBtn.textContent = okText;
+                cancelBtn.textContent = cancelText;
+                dlg.classList.add('is-visible');
+                dlg.setAttribute('aria-hidden', 'false');
+
+                const cleanup = (result) => {
+                    dlg.classList.remove('is-visible');
+                    dlg.setAttribute('aria-hidden', 'true');
+                    okBtn.removeEventListener('click', onOk);
+                    cancelBtn.removeEventListener('click', onCancel);
+                    dlg.removeEventListener('click', onBackdrop);
+                    document.removeEventListener('keydown', onKey);
+                    resolve(result);
+                };
+                const onOk = () => cleanup(true);
+                const onCancel = () => cleanup(false);
+                const onBackdrop = (e) => { if (e.target === dlg) cleanup(false); };
+                const onKey = (e) => {
+                    if (e.key === 'Escape') cleanup(false);
+                    else if (e.key === 'Enter') cleanup(true);
+                };
+                okBtn.addEventListener('click', onOk);
+                cancelBtn.addEventListener('click', onCancel);
+                dlg.addEventListener('click', onBackdrop);
+                document.addEventListener('keydown', onKey);
+                setTimeout(() => okBtn.focus(), 50);
+            });
+        }
+        window.showConfirm = showConfirm;
+
+        window.goHome = () => goToStep(0);
 
         // === INIT ===
         loadingManager = new LoadingComponent();

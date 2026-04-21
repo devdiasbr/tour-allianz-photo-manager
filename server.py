@@ -576,13 +576,16 @@ async def get_output_file(filepath: str):
 
 @app.post("/api/print")
 async def print_photos(req: PrintRequest):
-    """Launch the Windows "Print Pictures" wizard for the selected photos.
+    """Send selected photos directly to the Windows default printer — no dialog."""
+    try:
+        import win32api
+        import win32print
+    except ImportError:
+        return JSONResponse(
+            {"ok": False, "message": "pywin32 não instalado — rode: pip install pywin32"},
+            status_code=500,
+        )
 
-    Passes all valid files in a single Explorer selection so the user gets
-    ONE wizard with printer, paper size, layout and copy selection — instead
-    of N separate viewer windows. Uses the same Explorer "print" command
-    you'd get by selecting images and pressing Print in the file ribbon.
-    """
     try:
         valid_paths = []
         for f in req.files:
@@ -593,22 +596,25 @@ async def print_photos(req: PrintRequest):
             if os.path.exists(path):
                 valid_paths.append(os.path.abspath(path))
 
-        # Invoke the Print Pictures wizard via the shell "print" verb. For
-        # JPEGs on Win10/11 this opens the dialog with printer selection,
-        # paper size, layout and copies. Empty input is a no-op (returns 0).
-        opened = 0
+        if not valid_paths:
+            return {"ok": True, "printed": 0, "printer": None}
+
+        printer = win32print.GetDefaultPrinter()
+        printer_arg = f'"{printer}"'
+        printed = 0
         for p in valid_paths:
             try:
-                os.startfile(p, "print")
-            except OSError:
-                log.exception(f"print verb failed for {p}; falling back to default app")
-                os.startfile(p)
-            opened += 1
-        return {"ok": True, "printed": opened}
+                win32api.ShellExecute(0, "printto", p, printer_arg, ".", 0)
+                printed += 1
+            except Exception:
+                log.exception(f"printto failed for {p}")
+
+        log.info(f"Printed {printed}/{len(valid_paths)} files to {printer!r}")
+        return {"ok": True, "printed": printed, "printer": printer}
     except Exception as e:
         log.exception("print_photos failed")
         return JSONResponse(
-            {"ok": False, "message": f"Erro ao abrir para impressão: {e}"},
+            {"ok": False, "message": f"Erro ao imprimir: {e}"},
             status_code=500,
         )
 

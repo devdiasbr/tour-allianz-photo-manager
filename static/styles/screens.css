@@ -1,7 +1,7 @@
 /* telas */
 
 /* ===== step 0 · folder picker ===== */
-#step0 { padding: 36px 60px; max-width: 720px; }
+#step0 { padding: 36px 60px; max-width: 720px; margin: 0 auto; }
 #step0 h1 { font-family: 'Inter'; font-size: 22px; font-weight: 600; color: var(--text-strong); margin: 0 0 6px; }
 #step0 .subtitle { font-size: 13px; color: var(--text-dim); margin: 0 0 var(--space-6); }
 #step0 .path-row { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); align-items: center; }
@@ -27,13 +27,35 @@
 .recent-row .r-when { color: var(--text-dim); font-size: 11px; white-space: nowrap; }
 
 /* ===== step 1 · webcam ===== */
-#step1 { display: grid; grid-template-columns: 1fr 280px; gap: var(--space-4); padding: var(--space-4); }
-#step1 .cam-col { background: var(--surface); border: 1px solid var(--border); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
-#step1 .video-wrapper { aspect-ratio: 4/3; background: var(--modal-bg); position: relative; overflow: hidden; }
+#step1 {
+  display: flex; gap: var(--space-4); padding: var(--space-4);
+  align-items: stretch; justify-content: center;
+  height: calc(100vh - 85px); box-sizing: border-box;
+}
+#step1 .cam-col {
+  background: var(--surface); border: 1px solid var(--border);
+  padding: var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-3);
+  flex: 1 1 0; min-width: 0; min-height: 0;
+  box-sizing: border-box;
+}
+#step1 .video-wrapper {
+  flex: 1 1 0; min-height: 0; width: 100%;
+  background: var(--modal-bg); position: relative; overflow: hidden;
+}
 #step1 video { width: 100%; height: 100%; object-fit: cover; }
 #step1 canvas { display: none; }
-#step1 .cam-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
-#step1 .side-col { background: var(--surface); border: 1px solid var(--border); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+#step1 .cam-actions {
+  display: flex; gap: var(--space-2); flex-wrap: wrap;
+  justify-content: center; flex-shrink: 0;
+}
+#step1 .side-col {
+  background: var(--surface); border: 1px solid var(--border);
+  padding: var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-3);
+  width: 320px; flex-shrink: 0; box-sizing: border-box;
+  overflow-y: auto;
+}
 #step1 .side-col .panel-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .12em; color: var(--text-dim); text-transform: uppercase; margin: 0; font-weight: 500; display: flex; justify-content: space-between; align-items: center; }
 #step1 .side-col .panel-title .n { color: var(--brand); }
 .divider { height: 1px; background: var(--border); }

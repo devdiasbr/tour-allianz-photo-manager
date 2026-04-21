@@ -14,7 +14,7 @@
 <body>
 <!--ICONS-->
 <header class="statusbar">
-  <div class="wordmark">TOUR ALLIANZ</div>
+  <div class="wordmark" onclick="goHome()" style="cursor:pointer">TOUR ALLIANZ</div>
   <div class="meta" id="sessionMeta">
     <span>sessão <b id="metaSession">—</b></span>
     <span>fotos <b id="metaPhotos">0</b></span>
@@ -162,6 +162,22 @@
 
     <!-- Snackbar Stack -->
     <div class="snackbar-stack" id="snackStack"></div>
+
+    <!-- Confirm Dialog -->
+    <div class="confirm-overlay" id="confirmDialog" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="confirm-panel">
+        <div class="confirm-header">
+          <span class="confirm-tag">CONFIRMAR</span>
+          <span class="confirm-dot"></span>
+        </div>
+        <h2 class="confirm-title" id="confirmTitle">Voltar ao início?</h2>
+        <p class="confirm-body" id="confirmBody">Todo o progresso do scan atual será perdido.</p>
+        <div class="confirm-actions">
+          <button class="btn btn-ghost" id="confirmCancel">Cancelar</button>
+          <button class="btn btn-danger" id="confirmOk">Confirmar</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Image Carousel Modal -->
     <div class="modal-overlay" id="imageModal" onclick="handleModalClick(event)">
