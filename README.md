@@ -24,8 +24,9 @@ FastAPI + reconhecimento facial local (`face_recognition`/dlib), com estado por 
 | Reconhecimento facial | `face_recognition` (dlib HOG por padrão) |
 | Visão computacional auxiliar | OpenCV (CLAHE para enhancement, redimensionamento) |
 | Imagem | Pillow (EXIF, compose, thumbnails) |
-| Impressão | `os.startfile(path, "print")` (Windows) |
-| Frontend | HTML + CSS + JavaScript vanilla (sem framework) |
+| Impressão | `pywin32` — `win32api.ShellExecute("printto", ...)` direto para a impressora padrão (Windows) |
+| Frontend | HTML + CSS (tokens + base + components + screens + overlays) + JavaScript vanilla, sem framework |
+| Face detection ao vivo | MediaPipe Face Detection (vendored, ESM) — overlay de bbox na captura |
 | Picker de pastas nativo | `tkinter.filedialog` em thread isolada |
 | Testes | `pytest` + `httpx` (via `fastapi.testclient`) |
 
@@ -38,6 +39,7 @@ Sem banco de dados. Estado vive em memória por processo, indexado por cookie de
 ```
 ESP/
 ├── server.py                        # FastAPI app: rotas, middleware, jobs
+├── start.bat                        # Starter Windows: ativa venv e sobe uvicorn
 ├── requirements.txt
 ├── README.md
 ├── app/
@@ -47,10 +49,23 @@ ESP/
 │       └── composition_service.py   # Compose com template, save, recorte
 ├── static/
 │   ├── index.html                   # Stepper de 4 passos
-│   ├── style.css                    # Estilos
-│   └── app.js                       # Lógica de UI + chamadas à API
+│   ├── app.js                       # Lógica de UI + chamadas à API
+│   ├── theme.js                     # Toggle dark/light mode
+│   ├── face-detection.js            # MediaPipe bridge (window.__faceDetect)
+│   ├── _icons.svg                   # Sprite de ícones
+│   ├── styles/
+│   │   ├── tokens.css               # Design tokens (cores, spacing, typography)
+│   │   ├── base.css                 # Reset + elementos globais
+│   │   ├── components.css           # Botões, cards, inputs
+│   │   ├── screens.css              # Layouts por step
+│   │   └── overlays.css             # Modais (confirm dialog, loading, alerts)
+│   └── vendor/                      # MediaPipe Face Detection (ESM)
 ├── footer_template/
 │   └── template_allianz.jpg         # Rodapé que vai em todas as composições
+├── docs/
+│   ├── architecture.svg             # Diagrama animado
+│   ├── fix-print-apply.reg          # Fix do registro Windows: verbo "print" para imagens
+│   └── fix-print-backup.reg         # Backup do valor quebrado (reverter se necessário)
 ├── uploads/<YYYYMMDDHHMM>/          # Pastas de "sessão de fotos do dia"
 ├── output/                          # Composições prontas (TTL 7 dias)
 └── tests/
@@ -66,10 +81,10 @@ ESP/
 ### Pré-requisitos
 
 - **Python 3.10+** (testado em 3.14)
-- **Windows** para a função de impressão (usa `os.startfile`); o resto roda em qualquer SO
+- **Windows** para a função de impressão (usa `pywin32` + `ShellExecute("printto")`); o resto roda em qualquer SO
 - **dlib** compila C++ — em Windows, instale via wheel pré-compilado ou tenha o Visual C++ Build Tools
 
-### Setup
+### Setup (primeira vez)
 
 ```bash
 python -m venv venv
@@ -81,11 +96,21 @@ pip install -r requirements.txt
 
 ### Subir o servidor
 
+**Windows (recomendado) — duplo-clique em [start.bat](start.bat):**
+
+O script verifica se a `venv` existe, instala dependências se faltarem, abre o navegador em `http://127.0.0.1:8000` e mantém o servidor rodando. `Ctrl+C` na janela encerra. Se você prefere terminal:
+
+```cmd
+start.bat
+```
+
+**Modo manual (qualquer SO):**
+
 ```bash
-# Modo desenvolvimento (auto-reload)
+# Desenvolvimento (auto-reload)
 uvicorn server:app --host 127.0.0.1 --port 8000 --reload
 
-# Modo produção local
+# Produção local
 uvicorn server:app --host 0.0.0.0 --port 8000
 ```
 
@@ -229,7 +254,9 @@ Todos os logs carregam o `request_id` (`ContextVar` + `logging.Filter`):
 4. Sobrepõe `footer_template/template_allianz.jpg` no rodapé.
 5. Salva em `output/<basename>_composed.jpg`.
 
-A função de impressão chama `os.startfile(path, "print")`, que delega para o handler padrão do Windows. **Não funciona em Linux/macOS** — substituir por `lp` ou `lpr` se precisar.
+A função de impressão chama `win32api.ShellExecute(0, "printto", path, f'"{printer}"', ".", 0)` em loop para cada arquivo, enviando direto para a impressora padrão retornada por `win32print.GetDefaultPrinter()` — **sem abrir diálogo de impressão**. **Não funciona em Linux/macOS** — substituir por `lp` ou `lpr` se precisar.
+
+> **Fix de registro Windows:** se ao imprimir o sistema abrir o visualizador de imagens em vez de enviar para a impressora, o verbo `print` do seu registro está apontando para `ImageView_Fullscreen`. Rode [docs/fix-print-apply.reg](docs/fix-print-apply.reg) como administrador (botão direito → "Mesclar") para apontar corretamente para `ImageView_PrintTo`. Para reverter, rode [docs/fix-print-backup.reg](docs/fix-print-backup.reg).
 
 ---
 
@@ -255,7 +282,7 @@ pytest tests/test_routes.py -v
 ## Limitações conhecidas
 
 - **Estado em memória.** Reiniciar o uvicorn perde sessões e jobs. Para deploy multi-worker, mover para Redis ou similar.
-- **Impressão é Windows-only.** `os.startfile` não existe em Linux/macOS.
+- **Impressão é Windows-only.** Depende de `pywin32` e do shell do Windows. Em Linux/macOS precisa ser reescrita para `lp`/`lpr`.
 - **Reconhecimento HOG** não detecta rostos em fotos muito escuras ou muito pequenas. O scan já tenta CLAHE como fallback, mas não há garantia.
 - **Tkinter folder picker** abre uma janela nativa — não funciona em deploy headless.
 - **Sem autenticação.** O sistema assume operação local em rede confiável. Não exponha em internet pública sem um proxy reverso com auth.
@@ -269,7 +296,9 @@ pytest tests/test_routes.py -v
 | `[Errno 10048] error while attempting to bind` | Porta já em uso ou socket fantasma do Windows | Trocar `--port` ou aguardar 1–2 min |
 | Scan retorna 0 matches mesmo com a pessoa visível | Foto rotacionada via EXIF, ou foto muito pequena | Confirme que `FACE_UPSAMPLE` está em ≥2 e que o detector encontra o rosto na referência |
 | `dlib` não instala | Falta de C++ compiler no Windows | Instale Visual C++ Build Tools ou use um wheel pré-compilado |
-| Impressão não dispara | `os.startfile` precisa de uma impressora padrão configurada | Verifique em "Configurações → Impressoras" |
+| `ModuleNotFoundError: win32api` | `pywin32` não instalado na venv | `venv\Scripts\pip.exe install pywin32` |
+| Impressão abre o visualizador em vez de imprimir | Verbo `print` do registro aponta para `ImageView_Fullscreen` | Rodar [docs/fix-print-apply.reg](docs/fix-print-apply.reg) como admin |
+| Impressão não dispara | Sem impressora padrão configurada | Verifique em "Configurações → Impressoras" e marque uma como padrão |
 | Frontend não atualiza após edit | Cache do navegador | `Ctrl+F5` para hard reload |
 
 ---
