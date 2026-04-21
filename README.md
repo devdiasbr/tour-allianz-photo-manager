@@ -39,6 +39,7 @@ Sem banco de dados. Estado vive em memória por processo, indexado por cookie de
 ```
 ESP/
 ├── server.py                        # FastAPI app: rotas, middleware, jobs
+├── setup.bat                        # Setup Windows: instala Python, cria venv, deps
 ├── start.bat                        # Starter Windows: ativa venv e sobe uvicorn
 ├── requirements.txt
 ├── README.md
@@ -80,11 +81,23 @@ ESP/
 
 ### Pré-requisitos
 
-- **Python 3.10+** (testado em 3.14)
-- **Windows** para a função de impressão (usa `pywin32` + `ShellExecute("printto")`); o resto roda em qualquer SO
-- **dlib** compila C++ — em Windows, instale via wheel pré-compilado ou tenha o Visual C++ Build Tools
+- **Windows 10/11** com `winget` disponível (nativo no Win11; no Win10 via "App Installer" da Microsoft Store)
+- **Conexão com internet** na primeira execução (para baixar Python e dependências)
+- Impressão e face detection ao vivo requerem Windows; o backend em si roda em qualquer SO
 
-### Setup (primeira vez)
+### Setup automatizado (Windows — primeira vez)
+
+Duplo-clique em [setup.bat](setup.bat). Ele cuida de todo o ambiente:
+
+1. Instala **Python 3.12** via `winget` (se já não estiver instalado)
+2. Cria a `venv` em `.\venv`
+3. Baixa e instala um **wheel pré-compilado do `dlib`** para Python 3.12 x64 (dispensa Visual C++ Build Tools)
+4. Instala as demais dependências do `requirements.txt` (fastapi, face_recognition, opencv, pywin32, etc.)
+5. Verifica que todos os módulos carregam
+
+> Se for a primeira instalação do Python, o script pede para você fechar e reabrir o terminal antes de continuar (para o PATH atualizar). Basta rodar `setup.bat` de novo.
+
+### Setup manual (qualquer SO)
 
 ```bash
 python -m venv venv
@@ -93,6 +106,8 @@ venv\Scripts\activate          # Windows
 
 pip install -r requirements.txt
 ```
+
+No Windows, se `pip install dlib` falhar por falta de compilador C++, baixe um wheel pré-compilado de [z-mahmud22/Dlib_Windows_Python3.x](https://github.com/z-mahmud22/Dlib_Windows_Python3.x) compatível com sua versão de Python e instale com `pip install <arquivo>.whl` antes do `requirements.txt`.
 
 ### Subir o servidor
 
