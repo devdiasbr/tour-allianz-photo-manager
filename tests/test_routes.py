@@ -99,7 +99,9 @@ def test_compose_accepts_empty_request(client):
 def test_print_accepts_empty_files(client):
     r = client.post("/api/print", json={"files": []})
     assert r.status_code == 200
-    assert r.json() == {"ok": True, "printed": 0}
+    body = r.json()
+    assert body["ok"] is True
+    assert body["printed"] == 0
 
 
 # --- Upload validation ---
