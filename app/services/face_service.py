@@ -17,7 +17,7 @@ from PIL import Image, ImageOps
 from dataclasses import dataclass
 from app.config import (
     FACE_TOLERANCE, FACE_DETECTION_MODEL, THUMBNAIL_SIZE,
-    FACE_SCAN_MAX_WIDTH, FACE_UPSAMPLE, FACE_SCAN_MODE,
+    FACE_SCAN_MAX_WIDTH, FACE_UPSAMPLE, FACE_SCAN_MODE, FACE_SCAN_WORKERS,
 )
 from app.services import cache as encoding_cache
 
@@ -393,11 +393,7 @@ def scan_session(
     photo_files.sort()
 
     total = len(photo_files)
-    try:
-        workers_env = int(os.environ.get("FACE_SCAN_WORKERS", "1"))
-    except ValueError:
-        workers_env = 1
-    workers = max(1, min(workers_env, total or 1))
+    workers = max(1, min(FACE_SCAN_WORKERS, total or 1))
     scan_started = time.perf_counter()
     log.info(
         f"Scanning {total} photos workers={workers} mode={FACE_SCAN_MODE} "
