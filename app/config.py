@@ -32,6 +32,7 @@ FACE_UPSAMPLE = int(os.environ.get("FACE_UPSAMPLE", "1"))
 # escalation + CLAHE fallback on non-matches (slower, better recall on small/
 # low-light faces). Flip to "accurate" if matches are being missed.
 FACE_SCAN_MODE = os.environ.get("FACE_SCAN_MODE", "fast").lower()
+SCAN_EXECUTOR_WORKERS = int(os.environ.get("SCAN_EXECUTOR_WORKERS", "2"))
 
 # Camera
 CAMERA_PREVIEW_W = 640

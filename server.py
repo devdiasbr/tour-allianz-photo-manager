@@ -20,7 +20,7 @@ from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 from PIL import Image, UnidentifiedImageError
 
-from app.config import UPLOADS_DIR, OUTPUT_DIR, PRINT_DPI
+from app.config import UPLOADS_DIR, OUTPUT_DIR, PRINT_DPI, SCAN_EXECUTOR_WORKERS
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -161,7 +161,7 @@ def get_state() -> dict:
 
 # ---------- Async scan jobs ----------
 SCAN_JOB_TTL_SECONDS = 600  # 10 min — older finished jobs are GC'd
-_scan_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="scan")
+_scan_executor = ThreadPoolExecutor(max_workers=SCAN_EXECUTOR_WORKERS, thread_name_prefix="scan")
 scan_jobs: dict[str, dict] = {}
 _scan_jobs_lock = threading.Lock()
 
