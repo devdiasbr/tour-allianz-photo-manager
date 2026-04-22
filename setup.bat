@@ -138,8 +138,8 @@ if not errorlevel 1 (
   goto :deps
 )
 
-set DLIB_URL=https://raw.githubusercontent.com/z-mahmud22/Dlib_Windows_Python3.x/main/dlib-19.24.99-cp312-cp312-win_amd64.whl
-set DLIB_FILE=%TEMP%\dlib-19.24.99-cp312-cp312-win_amd64.whl
+set DLIB_URL=https://raw.githubusercontent.com/ZeroReiNull/dlib-python/main/dlib-19.24.2-cp312-cp312-win_amd64.whl
+set DLIB_FILE=%TEMP%\dlib-19.24.2-cp312-cp312-win_amd64.whl
 
 if not exist "%DLIB_FILE%" (
   echo Baixando wheel do dlib...
