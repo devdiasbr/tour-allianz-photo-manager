@@ -168,7 +168,7 @@ if not exist "requirements.txt" (
 )
 
 echo Instalando pacotes do requirements.txt...
-venv\Scripts\python.exe -m pip install -r requirements.txt
+venv\Scripts\python.exe -m pip install --no-cache-dir -r requirements.txt
 if errorlevel 1 (
   echo [ERRO] Falha ao instalar dependencias do requirements.txt.
   pause
