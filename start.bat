@@ -36,14 +36,11 @@ if not exist "venv\Scripts\uvicorn.exe" (
 set HOST=127.0.0.1
 set PORT=8000
 
-echo Servidor em: http://%HOST%:%PORT%
-echo Pressione Ctrl+C nesta janela para parar.
-echo.
+echo Iniciando servidor em http://%HOST%:%PORT% ...
+
+start "Tour Allianz - Servidor" /min venv\Scripts\python.exe -m uvicorn server:app --host %HOST% --port %PORT%
+
+powershell -NoProfile -Command "$u='http://%HOST%:%PORT%'; for($i=0;$i -lt 60;$i++){ try { [void](Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 $u); exit 0 } catch { Start-Sleep -Milliseconds 500 } }; exit 1"
 
 start "" "http://%HOST%:%PORT%"
-venv\Scripts\python.exe -m uvicorn server:app --host %HOST% --port %PORT%
-
-echo.
-echo Servidor encerrado.
-pause
-endlocal
+exit /b 0
