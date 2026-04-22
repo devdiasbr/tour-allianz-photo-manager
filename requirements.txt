@@ -1,10 +1,10 @@
 fastapi
 uvicorn
 python-multipart
-opencv-python
+opencv-python<4.12
 face-recognition
 Pillow
-numpy
+numpy<2
 pytest
 httpx
 pywin32; sys_platform == "win32"
