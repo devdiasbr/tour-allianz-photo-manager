@@ -141,22 +141,25 @@ if not errorlevel 1 (
 set DLIB_URL=https://raw.githubusercontent.com/z-mahmud22/Dlib_Windows_Python3.x/main/dlib-19.24.99-cp312-cp312-win_amd64.whl
 set DLIB_FILE=%TEMP%\dlib-19.24.99-cp312-cp312-win_amd64.whl
 
-if exist "%DLIB_FILE%" del "%DLIB_FILE%"
-
-echo Baixando wheel do dlib...
-powershell -NoProfile -Command "Invoke-WebRequest -Uri '%DLIB_URL%' -OutFile '%DLIB_FILE%' -UseBasicParsing"
-if errorlevel 1 (
-  echo [ERRO] Falha ao baixar o wheel do dlib.
-  echo        URL: %DLIB_URL%
-  echo        Verifique sua conexao e tente novamente.
-  pause
-  exit /b 1
+if not exist "%DLIB_FILE%" (
+  echo Baixando wheel do dlib...
+  powershell -NoProfile -Command "Invoke-WebRequest -Uri '%DLIB_URL%' -OutFile '%DLIB_FILE%' -UseBasicParsing"
+  if errorlevel 1 (
+    echo [ERRO] Falha ao baixar o wheel do dlib.
+    echo        URL: %DLIB_URL%
+    echo        Verifique sua conexao ou coloque o arquivo manualmente em:
+    echo        %DLIB_FILE%
+    pause
+    exit /b 1
+  )
+) else (
+  echo Wheel do dlib encontrado, pulando download.
 )
 
-REM Valida que o arquivo baixado e um zip/wheel real (comeca com PK)
+REM Valida que o arquivo e um zip/wheel real (comeca com PK)
 powershell -NoProfile -Command "$b=(Get-Content -Encoding Byte -ReadCount 2 -TotalCount 2 '%DLIB_FILE%')[0]; if ($b[0] -ne 80 -or $b[1] -ne 75) { Write-Error 'Arquivo invalido'; exit 1 }"
 if errorlevel 1 (
-  echo [ERRO] O arquivo baixado nao e um wheel valido ^(possivel erro de rede ou bloqueio corporativo^).
+  echo [ERRO] O arquivo nao e um wheel valido ^(possivel erro de rede ou bloqueio corporativo^).
   echo        Tente novamente ou baixe manualmente:
   echo        %DLIB_URL%
   echo        e coloque em: %DLIB_FILE%
