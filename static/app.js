@@ -354,13 +354,24 @@
             const grid = document.getElementById('photoGrid');
 
             const fallbackTotal = Math.max(0, Number(sessionPhotoCount) || 0);
-            const progressText = (done, total, percent) => {
+            const formatEta = (seconds) => {
+                if (!isFinite(seconds) || seconds <= 0) return '';
+                const s = Math.ceil(seconds);
+                if (s < 60) return `~${s}s`;
+                const m = Math.floor(s / 60);
+                const r = s % 60;
+                return r === 0 ? `~${m}m` : `~${m}m ${r}s`;
+            };
+            const progressText = (done, total, percent, etaSec) => {
                 if (total > 0) {
-                    const remaining = Math.max(0, total - done);
-                    return `Analisando fotos... ${percent}% • ${done}/${total} processadas • ${remaining} restantes`;
+                    const eta = formatEta(etaSec);
+                    const tail = eta ? ` • ${eta} restantes` : '';
+                    return `Analisando fotos... ${percent}% • ${done}/${total} processadas${tail}`;
                 }
                 return `Analisando fotos... ${percent}%`;
             };
+
+            let scanStartedAt = null;
 
             progress.classList.add('hidden');
             fill.style.width = '0%';
@@ -381,6 +392,7 @@
                 }
                 progress.classList.remove('hidden');
                 const jobId = startData.job_id;
+                scanStartedAt = performance.now();
 
                 while (true) {
                     await sleep(SCAN_POLL_MS);
@@ -394,13 +406,25 @@
                     const total = j.total > 0 ? j.total : fallbackTotal;
                     const done = Math.min(j.progress || 0, total || j.progress || 0);
                     const percent = total > 0 ? Math.floor((done * 100) / total) : 0;
+                    // Compute ETA once at least 3 photos are done and ~1.5s has passed,
+                    // so early noise doesn't produce wild estimates.
+                    let etaSec = null;
+                    if (total > 0 && done >= 3 && scanStartedAt != null) {
+                        const elapsed = (performance.now() - scanStartedAt) / 1000;
+                        if (elapsed >= 1.5) {
+                            const rate = done / elapsed;
+                            if (rate > 0) etaSec = (total - done) / rate;
+                        }
+                    }
                     fill.style.width = percent + '%';
                     text.textContent = `${done}/${total > 0 ? total : '?'}`;
-                    const txt = progressText(done, total, percent);
+                    const txt = progressText(done, total, percent, etaSec);
                     if (loadingManager) loadingManager.setText(txt);
                     if (total > 0) {
+                        const etaTail = formatEta(etaSec);
+                        const etaStr = etaTail ? ` • ${etaTail} restantes` : '';
                         document.getElementById('gridStatus').textContent =
-                            `Buscando... ${done}/${total} processadas • ${Math.max(0, total - done)} restantes`;
+                            `Buscando... ${done}/${total} processadas${etaStr}`;
                     }
 
                     if (j.status === 'done') {

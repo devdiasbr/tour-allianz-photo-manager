@@ -2,6 +2,7 @@ import os
 import io
 import glob
 import json
+import time
 import hashlib
 import logging
 import threading
@@ -13,7 +14,7 @@ from PIL import Image, ImageOps
 from dataclasses import dataclass
 from app.config import (
     FACE_TOLERANCE, FACE_DETECTION_MODEL, THUMBNAIL_SIZE,
-    FACE_SCAN_MAX_WIDTH, FACE_UPSAMPLE,
+    FACE_SCAN_MAX_WIDTH, FACE_UPSAMPLE, FACE_SCAN_MODE,
 )
 from app.services import cache as encoding_cache
 
@@ -147,9 +148,21 @@ def _scan_variant(
     locations = face_recognition.face_locations(
         small, number_of_times_to_upsample=upsample, model=FACE_DETECTION_MODEL
     )
-    encodings: list[np.ndarray] = (
-        face_recognition.face_encodings(small, locations) if locations and needs_enc else []
-    )
+    # Detection runs on the resized image (where HOG is fast), but encoding
+    # MUST run on the full-resolution crops — small-scale encodings produce
+    # muddy embeddings that collapse distinctions across age/gender/ethnicity.
+    # Encoding is cheap once boxes are known, so we pay basically nothing to
+    # keep quality. Scale the boxes back to original coordinates first.
+    encodings: list[np.ndarray] = []
+    if locations and needs_enc:
+        if scale < 1.0:
+            enc_locations = [
+                (int(t / scale), int(r / scale), int(b / scale), int(l / scale))
+                for (t, r, b, l) in locations
+            ]
+            encodings = face_recognition.face_encodings(image, enc_locations)
+        else:
+            encodings = face_recognition.face_encodings(small, locations)
     diag_small = diagnostics_from_locations(small, locations)
     passes.append({
         "variant": variant_name,
@@ -176,7 +189,10 @@ def _scan_variant(
     # detected at low res it's worth re-encoding at full res for a tighter
     # distance against the reference. Also, full-res detection sometimes finds
     # faces the resized pass missed entirely.
-    if not matched and scale < 1.0:
+    # In "fast" mode this escalation is skipped — full-res HOG dominates
+    # wall-clock on big folders where most photos are non-matches. Flip the
+    # FACE_SCAN_MODE env var to "accurate" to re-enable.
+    if not matched and scale < 1.0 and FACE_SCAN_MODE == "accurate":
         full_upsample = max(1, upsample - 1) if upsample > 1 else upsample
         full_locations = face_recognition.face_locations(
             image, number_of_times_to_upsample=full_upsample, model=FACE_DETECTION_MODEL
@@ -220,8 +236,10 @@ def _scan_variant(
 
 def _photo_cache_key(sha: str) -> str:
     """Per-photo cache key. Includes tunables that affect detection so a config
-    change automatically invalidates stale entries."""
-    return f"photo:{sha}:u{FACE_UPSAMPLE}:w{FACE_SCAN_MAX_WIDTH}:m{FACE_DETECTION_MODEL}"
+    change automatically invalidates stale entries. The trailing version tag
+    bumps when the encoding pipeline itself changes (e.g. encoding moved from
+    resized crops to full-resolution crops); old entries become misses."""
+    return f"photo:{sha}:u{FACE_UPSAMPLE}:w{FACE_SCAN_MAX_WIDTH}:m{FACE_DETECTION_MODEL}:s{FACE_SCAN_MODE}:v2"
 
 
 def _match_against_reference(
@@ -299,7 +317,9 @@ def _process_one_photo(
         # CLAHE-enhanced encodings are sometimes a better fit for low-light or
         # backlit subjects, and the cost is one extra pipeline run on the
         # cache-miss path only (cache hits skip this entirely).
-        if not base_result["matched"]:
+        # Skipped in "fast" mode: CLAHE+upsample+1 is expensive and only helps
+        # the low-light minority of event photos.
+        if not base_result["matched"] and FACE_SCAN_MODE == "accurate":
             enhanced_image = enhance_for_detection(image)
             enhanced_result = _scan_variant(
                 image=enhanced_image,
@@ -353,10 +373,11 @@ def scan_session(
     """Scan all photos in a session folder and return matches.
 
     A photo matches if ANY face in it matches ANY reference encoding.
-    Sequential by default (dlib/opencv in parallel threads on Windows has
-    crashed the process natively in this setup). Encodings are memoized on
-    disk per-photo by sha12+variant; on rescans only the cache lookup runs.
-    Set env `FACE_SCAN_WORKERS=N` (N>=2) to opt in to threaded scanning.
+    Sequential by default — dlib HOG detection crashes natively when called
+    from multiple threads in this setup (Windows + dlib 19.24). Encodings
+    are memoized on disk per-photo by sha12+config, so rescans cost only
+    a file hash per photo. Set env `FACE_SCAN_WORKERS=N` (N>=2) to opt in
+    to threaded scanning at your own risk.
     """
     seen = set()
     photo_files = []
@@ -374,12 +395,15 @@ def scan_session(
     except ValueError:
         workers_env = 1
     workers = max(1, min(workers_env, total or 1))
+    scan_started = time.perf_counter()
     log.info(
-        f"Scanning {total} photos workers={workers} tolerance={tolerance} "
-        f"max_width={FACE_SCAN_MAX_WIDTH} upsample={FACE_UPSAMPLE}"
+        f"Scanning {total} photos workers={workers} mode={FACE_SCAN_MODE} "
+        f"tolerance={tolerance} max_width={FACE_SCAN_MAX_WIDTH} "
+        f"upsample={FACE_UPSAMPLE}"
     )
 
     results: list[MatchResult] = []
+    cache_hits = {"n": 0}
 
     def _consume(photo_path: str, payload: dict, done_n: int) -> None:
         if not payload["ok"]:
@@ -392,6 +416,8 @@ def scan_session(
         best_dist = payload["best_dist"]
         orig_locations = payload["orig_locations"]
         source = payload.get("source", "computed")
+        if source == "cache":
+            cache_hits["n"] += 1
 
         diagnostic_payload = {
             "file": os.path.basename(photo_path),
@@ -478,5 +504,12 @@ def scan_session(
         encoding_cache.flush()
     except Exception:
         log.warning("encoding_cache.flush failed", exc_info=True)
-    log.info(f"Scan complete: {len(results)}/{total} matches")
+    elapsed = time.perf_counter() - scan_started
+    rate = (total / elapsed) if elapsed > 0 else 0.0
+    log.info(
+        f"Scan complete: {len(results)}/{total} matches "
+        f"in {elapsed:.1f}s ({rate:.2f} photos/s, "
+        f"cache_hits={cache_hits['n']}/{total}, workers={workers}, "
+        f"mode={FACE_SCAN_MODE})"
+    )
     return results
