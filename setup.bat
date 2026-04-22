@@ -138,17 +138,29 @@ if not errorlevel 1 (
   goto :deps
 )
 
-set DLIB_URL=https://github.com/z-mahmud22/Dlib_Windows_Python3.x/raw/main/dlib-19.24.99-cp312-cp312-win_amd64.whl
+set DLIB_URL=https://raw.githubusercontent.com/z-mahmud22/Dlib_Windows_Python3.x/main/dlib-19.24.99-cp312-cp312-win_amd64.whl
 set DLIB_FILE=%TEMP%\dlib-19.24.99-cp312-cp312-win_amd64.whl
 
 if exist "%DLIB_FILE%" del "%DLIB_FILE%"
 
 echo Baixando wheel do dlib...
-powershell -NoProfile -Command "Invoke-WebRequest -Uri '%DLIB_URL%' -OutFile '%DLIB_FILE%'"
+powershell -NoProfile -Command "Invoke-WebRequest -Uri '%DLIB_URL%' -OutFile '%DLIB_FILE%' -UseBasicParsing"
 if errorlevel 1 (
   echo [ERRO] Falha ao baixar o wheel do dlib.
   echo        URL: %DLIB_URL%
   echo        Verifique sua conexao e tente novamente.
+  pause
+  exit /b 1
+)
+
+REM Valida que o arquivo baixado e um zip/wheel real (comeca com PK)
+powershell -NoProfile -Command "$b=(Get-Content -Encoding Byte -ReadCount 2 -TotalCount 2 '%DLIB_FILE%')[0]; if ($b[0] -ne 80 -or $b[1] -ne 75) { Write-Error 'Arquivo invalido'; exit 1 }"
+if errorlevel 1 (
+  echo [ERRO] O arquivo baixado nao e um wheel valido ^(possivel erro de rede ou bloqueio corporativo^).
+  echo        Tente novamente ou baixe manualmente:
+  echo        %DLIB_URL%
+  echo        e coloque em: %DLIB_FILE%
+  del "%DLIB_FILE%" >nul 2>&1
   pause
   exit /b 1
 )
@@ -188,6 +200,14 @@ echo Verificando instalacao...
 venv\Scripts\python.exe -c "import fastapi, uvicorn, cv2, PIL, numpy, win32api, pkg_resources; from app.services import face_service; print('OK - dependencias instaladas')"
 if errorlevel 1 (
   echo [AVISO] Alguns modulos falharam ao carregar. Veja a mensagem acima.
+  pause
+  exit /b 1
+)
+
+venv\Scripts\python.exe -c "import numpy as np; from app.services import face_service; img=np.zeros((32,32,3), dtype=np.uint8); face_service.get_face_locations(img); print('OK - detector operacional')"
+if errorlevel 1 (
+  echo [ERRO] O detector facial nao conseguiu processar uma imagem RGB simples.
+  echo        Verifique a compatibilidade entre numpy e dlib neste ambiente.
   pause
   exit /b 1
 )
