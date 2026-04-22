@@ -576,9 +576,15 @@ async def get_output_file(filepath: str):
 
 @app.post("/api/print")
 async def print_photos(req: PrintRequest):
-    """Send selected photos directly to the Windows default printer — no dialog."""
+    """Open each composed photo in the system image viewer with the print dialog.
+
+    Uses the shell "print" verb (SW_SHOWNORMAL) so the user picks the printer in
+    the viewer. This is more reliable on Windows 11 than "printto", which depends
+    on the default image handler registering that verb.
+    """
     try:
         import win32api
+        import win32con
         import win32print
     except ImportError:
         return JSONResponse(
@@ -587,30 +593,50 @@ async def print_photos(req: PrintRequest):
         )
 
     try:
-        valid_paths = []
+        log.info(f"print_photos: received {len(req.files)} file(s)")
+        valid_paths: list[str] = []
         for f in req.files:
             path = f.output
-            if not path or not _is_within(path, OUTPUT_DIR):
+            if not path:
+                log.warning("Print rejected (empty output path)")
+                continue
+            if not _is_within(path, OUTPUT_DIR):
                 log.warning(f"Print rejected (outside OUTPUT_DIR): {path!r}")
                 continue
-            if os.path.exists(path):
-                valid_paths.append(os.path.abspath(path))
+            if not os.path.exists(path):
+                log.warning(f"Print rejected (file missing): {path!r}")
+                continue
+            valid_paths.append(os.path.abspath(path))
 
         if not valid_paths:
-            return {"ok": True, "printed": 0, "printer": None}
+            log.warning("print_photos: no valid paths after filtering")
+            return {"ok": True, "printed": 0, "printer": None,
+                    "message": "Nenhuma foto composta válida para imprimir. Recomponha as fotos e tente novamente."}
 
-        printer = win32print.GetDefaultPrinter()
-        printer_arg = f'"{printer}"'
+        try:
+            printer = win32print.GetDefaultPrinter()
+        except Exception:
+            printer = None
+
+        errors: list[str] = []
         printed = 0
         for p in valid_paths:
             try:
-                win32api.ShellExecute(0, "printto", p, printer_arg, ".", 0)
+                win32api.ShellExecute(0, "print", p, None, ".", win32con.SW_SHOWNORMAL)
                 printed += 1
-            except Exception:
-                log.exception(f"printto failed for {p}")
+            except Exception as e:
+                log.exception(f"print verb failed for {p}")
+                errors.append(f"{os.path.basename(p)}: {e}")
 
-        log.info(f"Printed {printed}/{len(valid_paths)} files to {printer!r}")
-        return {"ok": True, "printed": printed, "printer": printer}
+        log.info(f"Print opened {printed}/{len(valid_paths)} files (printer={printer!r})")
+        resp = {"ok": printed > 0, "printed": printed, "printer": printer}
+        if errors:
+            resp["errors"] = errors
+            resp["message"] = (
+                "Falha ao abrir o visualizador de imagens. Verifique se há um "
+                "app padrão associado a .jpg com suporte a impressão."
+            )
+        return resp
     except Exception as e:
         log.exception("print_photos failed")
         return JSONResponse(

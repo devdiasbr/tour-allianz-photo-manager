@@ -584,12 +584,18 @@
         // === PRINT ===
         async function printAll() {
             try {
+                console.log('[print] sending files:', composedFiles);
                 const data = await requestJson('/api/print', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({files: composedFiles})
                 }, { text: 'Enviando para impressão...' });
-                showSnackbar(`${data.printed} imagem(ns) abertas — clique em Imprimir no visualizador para escolher a impressora`);
+                console.log('[print] server response:', data);
+                if (data.printed > 0) {
+                    showSnackbar(`${data.printed} imagem(ns) abertas — clique em Imprimir no visualizador para escolher a impressora`);
+                } else {
+                    showSnackbar(data.message || 'Nada foi enviado para impressão.');
+                }
             } catch (err) {
                 showSnackbar('Erro: ' + err.message);
             }
