@@ -138,7 +138,7 @@ if not errorlevel 1 (
   goto :deps
 )
 
-set DLIB_FILE=%~dp0wheels\dlib-19.24.2-cp312-cp312-win_amd64.whl
+set DLIB_FILE=%~dp0wheels\dlib-19.24.99-cp312-cp312-win_amd64.whl
 
 if not exist "%DLIB_FILE%" (
   echo [ERRO] Wheel do dlib nao encontrado em: %DLIB_FILE%
