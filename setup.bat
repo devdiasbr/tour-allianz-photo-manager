@@ -19,31 +19,39 @@ echo.
 pause
 
 REM ----------------------------------------------------------------
+REM  Compatibilidade minima
+REM ----------------------------------------------------------------
+if /I not "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
+  echo [ERRO] Este instalador suporta apenas Windows x64.
+  echo        Arquitetura detectada: %PROCESSOR_ARCHITECTURE%
+  pause
+  exit /b 1
+)
+
+if exist "server.pid" if exist "stop.bat" (
+  echo Servidor detectado. Encerrando antes do setup...
+  call stop.bat
+)
+
+REM ----------------------------------------------------------------
 REM  1. Python 3.12
 REM ----------------------------------------------------------------
 echo.
 echo [1/4] Verificando Python 3.12...
 
-where winget >nul 2>&1
-if errorlevel 1 (
-  echo [ERRO] winget nao encontrado nesta maquina.
-  echo        Atualize o Windows ou instale o "App Installer" da Microsoft Store.
-  echo        Depois rode este script novamente.
-  pause
-  exit /b 1
-)
-
-set PYEXE=
-where py >nul 2>&1
-if not errorlevel 1 (
-  py -3.12 --version >nul 2>&1
-  if not errorlevel 1 (
-    for /f "delims=" %%v in ('py -3.12 --version') do echo Encontrado: %%v
-    set PYEXE=py -3.12
-  )
-)
+set "PYEXE="
+call :find_python312
 
 if not defined PYEXE (
+  where winget >nul 2>&1
+  if errorlevel 1 (
+    echo [ERRO] Python 3.12 nao encontrado e winget nao esta disponivel.
+    echo        Atualize o Windows ou instale o "App Installer" da Microsoft Store.
+    echo        Alternativamente, instale o Python 3.12 manualmente e rode o setup novamente.
+    pause
+    exit /b 1
+  )
+
   echo Python 3.12 nao encontrado. Instalando via winget...
   winget install --id Python.Python.3.12 -e --source winget --accept-source-agreements --accept-package-agreements
   if errorlevel 1 (
@@ -52,12 +60,16 @@ if not defined PYEXE (
     pause
     exit /b 1
   )
-  echo Python 3.12 instalado.
-  echo.
-  echo [IMPORTANTE] Feche esta janela e abra novamente para o PATH atualizar,
-  echo              depois rode setup.bat mais uma vez.
-  pause
-  exit /b 0
+
+  set "PATH=%LocalAppData%\Programs\Python\Launcher;%LocalAppData%\Programs\Python\Python312;%PATH%"
+  call :find_python312
+
+  if not defined PYEXE (
+    echo Python 3.12 foi instalado, mas nao ficou disponivel nesta sessao.
+    echo Feche esta janela e rode setup.bat novamente.
+    pause
+    exit /b 0
+  )
 )
 
 REM ----------------------------------------------------------------
@@ -66,10 +78,27 @@ REM ----------------------------------------------------------------
 echo.
 echo [2/4] Criando ambiente virtual em .\venv...
 
+set "VENV_OK="
 if exist "venv\Scripts\python.exe" (
-  echo venv ja existe, reutilizando.
-) else (
-  %PYEXE% -m venv venv
+  set "VENV_VERSION="
+  for /f "usebackq delims=" %%V in (`venv\Scripts\python.exe -c "import sys; print('.'.join(map(str, sys.version_info[:2])))" 2^>nul`) do set "VENV_VERSION=%%V"
+  if "!VENV_VERSION!"=="3.12" (
+    set "VENV_OK=1"
+    echo venv ja existe com Python 3.12, reutilizando.
+  ) else (
+    echo venv existente usa Python !VENV_VERSION!, recriando com Python 3.12...
+    rmdir /s /q "venv"
+    if exist "venv\Scripts\python.exe" (
+      echo [ERRO] Nao foi possivel recriar a venv porque ela esta em uso.
+      echo        Feche a aplicacao, rode stop.bat e execute o setup novamente.
+      pause
+      exit /b 1
+    )
+  )
+)
+
+if not defined VENV_OK (
+  "%PYEXE%" -m venv venv
   if errorlevel 1 (
     echo [ERRO] Falha ao criar venv.
     pause
@@ -78,7 +107,19 @@ if exist "venv\Scripts\python.exe" (
   echo venv criada.
 )
 
-venv\Scripts\python.exe -m pip install --upgrade pip wheel setuptools
+venv\Scripts\python.exe -m pip --version >nul 2>&1
+if errorlevel 1 (
+  echo pip ausente na venv. Reinstalando com ensurepip...
+  venv\Scripts\python.exe -m ensurepip --upgrade
+  if errorlevel 1 (
+    echo [ERRO] Falha ao reinstalar o pip na venv.
+    pause
+    exit /b 1
+  )
+)
+
+echo Atualizando pip, wheel e setuptools compativel...
+venv\Scripts\python.exe -m pip install --upgrade pip wheel "setuptools<81"
 if errorlevel 1 (
   echo [ERRO] Falha ao atualizar pip.
   pause
@@ -98,12 +139,12 @@ if not errorlevel 1 (
 )
 
 set DLIB_URL=https://github.com/z-mahmud22/Dlib_Windows_Python3.x/raw/main/dlib-19.24.99-cp312-cp312-win_amd64.whl
-set DLIB_FILE=%TEMP%\dlib-cp312-win_amd64.whl
+set DLIB_FILE=%TEMP%\dlib-19.24.99-cp312-cp312-win_amd64.whl
 
 if exist "%DLIB_FILE%" del "%DLIB_FILE%"
 
 echo Baixando wheel do dlib...
-curl -L --fail -o "%DLIB_FILE%" "%DLIB_URL%"
+powershell -NoProfile -Command "Invoke-WebRequest -Uri '%DLIB_URL%' -OutFile '%DLIB_FILE%'"
 if errorlevel 1 (
   echo [ERRO] Falha ao baixar o wheel do dlib.
   echo        URL: %DLIB_URL%
@@ -112,7 +153,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-venv\Scripts\pip.exe install "%DLIB_FILE%"
+venv\Scripts\python.exe -m pip install "%DLIB_FILE%"
 if errorlevel 1 (
   echo [ERRO] Falha ao instalar o dlib.
   pause
@@ -127,7 +168,14 @@ REM ----------------------------------------------------------------
 echo.
 echo [4/4] Instalando demais dependencias...
 
-venv\Scripts\pip.exe install -r requirements.txt
+if not exist "requirements.txt" (
+  echo [ERRO] Arquivo requirements.txt nao encontrado.
+  pause
+  exit /b 1
+)
+
+echo Instalando pacotes do requirements.txt...
+venv\Scripts\python.exe -m pip install -r requirements.txt
 if errorlevel 1 (
   echo [ERRO] Falha ao instalar dependencias do requirements.txt.
   pause
@@ -137,11 +185,26 @@ if errorlevel 1 (
 REM Verificacao final
 echo.
 echo Verificando instalacao...
-venv\Scripts\python.exe -c "import fastapi, uvicorn, cv2, face_recognition, PIL, numpy, win32api; print('OK - todos os modulos carregam')"
+venv\Scripts\python.exe -c "import fastapi, uvicorn, cv2, face_recognition_models, PIL, numpy, win32api, pkg_resources; print('OK - dependencias instaladas')"
 if errorlevel 1 (
   echo [AVISO] Alguns modulos falharam ao carregar. Veja a mensagem acima.
   pause
   exit /b 1
+)
+
+venv\Scripts\python.exe -c "import os, sys; sys.exit(10 if any(ord(c) > 127 for c in os.getcwd()) else 0)"
+if errorlevel 10 (
+  echo.
+  echo [AVISO] A pasta atual contem acentos ou caracteres especiais.
+  echo         O dlib/face_recognition pode falhar nesses caminhos no Windows.
+  echo         Para a maquina de destino, prefira instalar em uma pasta simples como C:\ESP.
+)
+
+echo %CD% | find /I "OneDrive" >nul
+if not errorlevel 1 (
+  echo.
+  echo [AVISO] A pasta atual esta dentro do OneDrive.
+  echo         Para evitar travas e problemas de caminho, prefira uma pasta local como C:\ESP.
 )
 
 echo.
@@ -157,3 +220,26 @@ echo (botao direito -^> Mesclar).
 echo.
 pause
 endlocal
+exit /b 0
+
+:find_python312
+set "PYEXE="
+for /f "usebackq delims=" %%P in (`py -3.12 -c "import sys; print(sys.executable)" 2^>nul`) do set "PYEXE=%%P"
+if defined PYEXE goto :show_python
+
+if exist "%LocalAppData%\Programs\Python\Python312\python.exe" (
+  set "PYEXE=%LocalAppData%\Programs\Python\Python312\python.exe"
+  goto :show_python
+)
+
+for %%P in (python.exe) do (
+  for /f "usebackq delims=" %%V in (`"%%~$PATH:P" -c "import sys; print('.'.join(map(str, sys.version_info[:2])))" 2^>nul`) do (
+    if "%%V"=="3.12" set "PYEXE=%%~$PATH:P"
+  )
+)
+
+:show_python
+if defined PYEXE (
+  for /f "usebackq delims=" %%V in (`"%PYEXE%" --version 2^>^&1`) do echo Encontrado: %%V
+)
+exit /b 0
