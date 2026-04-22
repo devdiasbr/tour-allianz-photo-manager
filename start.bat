@@ -38,11 +38,11 @@ set PORT=8000
 
 :: Variaveis de configuracao (descomente e ajuste conforme necessario)
 :: "fast" (padrao) ou "accurate" (mais lento, melhor para rostos pequenos/escuros)
-set FACE_SCAN_MODE=accurate
+set FACE_SCAN_MODE=fast
 :: threads por foto no scan (padrao: 1)
 set FACE_SCAN_WORKERS=1
 :: jobs de scan simultaneos (padrao: 2)
-set SCAN_EXECUTOR_WORKERS=4
+set SCAN_EXECUTOR_WORKERS=2
 :: 1=rapido, 2=melhor deteccao de rostos pequenos
 set FACE_UPSAMPLE=1
 :: largura maxima para redimensionar antes do scan
