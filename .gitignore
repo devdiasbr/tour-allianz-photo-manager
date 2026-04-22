@@ -1,8 +1,8 @@
 # ============ PII / dados sensíveis (NUNCA versionar) ============
 # Fotos reais de visitantes
-#uploads/
+uploads/
 # Composições prontas (também contêm rostos)
-#output/
+output/
 
 # ============ Virtualenv ============
 venv/
@@ -52,6 +52,4 @@ dist/
 cache/
 
 # ============ Runtime / dados gerados ============
-uploads/
-output/
 server.pid

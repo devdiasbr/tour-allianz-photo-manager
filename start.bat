@@ -46,6 +46,18 @@ if exist "server.pid" (
   timeout /t 1 /nobreak >nul
 )
 
+:: Limpa cache e output antes de iniciar
+echo Limpando cache e output anteriores...
+if exist "cache\detections.pkl" del /q "cache\detections.pkl" >nul 2>&1
+if exist "cache\thumbnails" (
+  for /f "usebackq delims=" %%F in (`dir /b /a-d "cache\thumbnails" 2^>nul`) do del /q "cache\thumbnails\%%F" >nul 2>&1
+)
+if exist "output" (
+  for /d %%D in ("output\*") do rmdir /s /q "%%D" >nul 2>&1
+  for /f "usebackq delims=" %%F in (`dir /b /a-d "output" 2^>nul`) do del /q "output\%%F" >nul 2>&1
+)
+echo.
+
 echo Iniciando servidor em http://%HOST%:%PORT% ...
 
 :: Sobe python.exe sem janela. Captura stdout/stderr em arquivo pra ajudar diagnostico.

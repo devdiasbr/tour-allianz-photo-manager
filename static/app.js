@@ -117,7 +117,19 @@
 
         // === FOLDER PICKER ===
         const RECENT_KEY = 'recentFolders';
+        const BOOT_KEY   = 'serverBootId';
         const MAX_RECENT = 5;
+
+        async function clearRecentsOnRestart() {
+            try {
+                const res = await fetch('/api/boot-id');
+                const { boot_id } = await res.json();
+                if (localStorage.getItem(BOOT_KEY) !== boot_id) {
+                    localStorage.removeItem(RECENT_KEY);
+                    localStorage.setItem(BOOT_KEY, boot_id);
+                }
+            } catch { /* servidor indisponível, ignora */ }
+        }
 
         function loadRecent() {
             try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); }
@@ -126,10 +138,24 @@
 
         function saveRecent(path, count) {
             let recents = loadRecent().filter(r => r.path !== path);
-            recents.unshift({ path, count });
+            recents.unshift({ path, count, usedAt: Date.now() });
             recents = recents.slice(0, MAX_RECENT);
             localStorage.setItem(RECENT_KEY, JSON.stringify(recents));
             renderRecent();
+        }
+
+        function formatWhen(ts) {
+            if (!ts) return '';
+            const diff = Date.now() - ts;
+            const m = Math.floor(diff / 60000);
+            const h = Math.floor(diff / 3600000);
+            const d = Math.floor(diff / 86400000);
+            if (m < 1) return 'agora mesmo';
+            if (m < 60) return `há ${m} min`;
+            if (h < 24) return `há ${h}h`;
+            if (d === 1) return 'ontem';
+            if (d < 7) return `há ${d} dias`;
+            return new Date(ts).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
         }
 
         function renderRecent() {
@@ -146,7 +172,7 @@
                 item.innerHTML = `
                     <span class="r-path" title="${r.path}">${name}</span>
                     <span class="r-count">${r.count} fotos</span>
-                    <span class="r-when"></span>
+                    <span class="r-when">${formatWhen(r.usedAt)}</span>
                 `;
                 item.onclick = () => {
                     document.getElementById('pathInput').value = r.path;
@@ -209,7 +235,8 @@
             setTimeout(() => goToStepForce(1), 800);
         }
 
-        function initFolderPicker() {
+        async function initFolderPicker() {
+            await clearRecentsOnRestart();
             renderRecent();
         }
 

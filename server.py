@@ -29,6 +29,8 @@ from app.services import cache as encoding_cache
 
 _INDEX_CACHE: dict = {"html": None, "mtime": 0.0}
 
+BOOT_ID = str(int(time.time()))
+
 
 # ---------- Logging + per-request context ----------
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
@@ -278,6 +280,11 @@ def root():
         _INDEX_CACHE["html"] = html.replace("<!--ICONS-->", svg)
         _INDEX_CACHE["mtime"] = mtime
     return HTMLResponse(_INDEX_CACHE["html"])
+
+
+@app.get("/api/boot-id")
+async def get_boot_id():
+    return {"boot_id": BOOT_ID}
 
 
 @app.get("/api/sessions")
