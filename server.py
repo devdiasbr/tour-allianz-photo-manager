@@ -20,7 +20,7 @@ from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 from PIL import Image, UnidentifiedImageError
 
-from app.config import UPLOADS_DIR, OUTPUT_DIR
+from app.config import UPLOADS_DIR, OUTPUT_DIR, PRINT_DPI
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -42,15 +42,27 @@ class RequestIdFilter(logging.Filter):
         return True
 
 
-_handler = logging.StreamHandler()
-_handler.setFormatter(logging.Formatter(
+_LOG_FMT = logging.Formatter(
     "%(asctime)s [%(request_id)s] %(levelname)s %(name)s: %(message)s"
-))
-_handler.addFilter(RequestIdFilter())
+)
+_REQ_FILTER = RequestIdFilter()
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(_LOG_FMT)
+_handler.addFilter(_REQ_FILTER)
+
+from logging.handlers import RotatingFileHandler
+_LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server.log")
+_file_handler = RotatingFileHandler(
+    _LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+)
+_file_handler.setFormatter(_LOG_FMT)
+_file_handler.addFilter(_REQ_FILTER)
 
 _root = logging.getLogger()
 _root.handlers.clear()
 _root.addHandler(_handler)
+_root.addHandler(_file_handler)
 _root.setLevel(logging.INFO)
 
 log = logging.getLogger(__name__)
@@ -576,11 +588,12 @@ async def get_output_file(filepath: str):
 
 @app.post("/api/print")
 async def print_photos(req: PrintRequest):
-    """Open each composed photo in the system image viewer with the print dialog.
+    """Bundle all composed photos into a single PDF and trigger the print dialog once.
 
-    Uses the shell "print" verb (SW_SHOWNORMAL) so the user picks the printer in
-    the viewer. This is more reliable on Windows 11 than "printto", which depends
-    on the default image handler registering that verb.
+    Generates a multi-page PDF (one photo per page at PRINT_DPI) under
+    `output/_prints/` and invokes the Windows shell "print" verb on it. The
+    default PDF handler (Edge, Acrobat, etc.) opens its print dialog where the
+    user picks printer, copies and layout for all photos at once.
     """
     try:
         import win32api
@@ -618,29 +631,51 @@ async def print_photos(req: PrintRequest):
         except Exception:
             printer = None
 
-        errors: list[str] = []
-        printed = 0
-        for p in valid_paths:
-            try:
-                win32api.ShellExecute(0, "print", p, None, ".", win32con.SW_SHOWNORMAL)
-                printed += 1
-            except Exception as e:
-                log.exception(f"print verb failed for {p}")
-                errors.append(f"{os.path.basename(p)}: {e}")
+        prints_dir = os.path.join(OUTPUT_DIR, "_prints")
+        os.makedirs(prints_dir, exist_ok=True)
+        pdf_path = os.path.abspath(
+            os.path.join(prints_dir, f"bundle-{int(time.time())}-{uuid.uuid4().hex[:6]}.pdf")
+        )
 
-        log.info(f"Print opened {printed}/{len(valid_paths)} files (printer={printer!r})")
-        resp = {"ok": printed > 0, "printed": printed, "printer": printer}
-        if errors:
-            resp["errors"] = errors
-            resp["message"] = (
-                "Falha ao abrir o visualizador de imagens. Verifique se há um "
-                "app padrão associado a .jpg com suporte a impressão."
+        images: list[Image.Image] = []
+        try:
+            for p in valid_paths:
+                img = Image.open(p)
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+                images.append(img)
+            images[0].save(
+                pdf_path,
+                save_all=True,
+                append_images=images[1:],
+                resolution=PRINT_DPI,
             )
-        return resp
+        finally:
+            for img in images:
+                try:
+                    img.close()
+                except Exception:
+                    pass
+
+        try:
+            win32api.ShellExecute(0, "print", pdf_path, None, ".", win32con.SW_SHOWNORMAL)
+        except Exception as e:
+            log.exception("ShellExecute 'print' failed on PDF bundle")
+            return JSONResponse(
+                {"ok": False,
+                 "message": (
+                     "Falha ao abrir o diálogo de impressão. Verifique se há um "
+                     f"app padrão associado a .pdf. Detalhe: {e}"
+                 )},
+                status_code=500,
+            )
+
+        log.info(f"Print dialog opened for bundled PDF with {len(valid_paths)} page(s) -> {pdf_path} (printer={printer!r})")
+        return {"ok": True, "printed": len(valid_paths), "printer": printer, "bundle": pdf_path}
     except Exception as e:
         log.exception("print_photos failed")
         return JSONResponse(
-            {"ok": False, "message": f"Erro ao imprimir: {e}"},
+            {"ok": False, "message": f"Erro ao preparar impressão: {e}"},
             status_code=500,
         )
 

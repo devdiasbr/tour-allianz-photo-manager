@@ -22,7 +22,7 @@ PORTRAIT_W = 1772   # 15cm at 300 DPI
 PORTRAIT_H = 2362   # 20cm at 300 DPI
 
 # Face recognition
-FACE_TOLERANCE = 0.70  # More generous matching (default 0.6)
+FACE_TOLERANCE = 0.6 # More generous matching (default 0.6)
 FACE_DETECTION_MODEL = "hog"  # "hog" for CPU, "cnn" for GPU
 FACE_SCAN_MAX_WIDTH = int(os.environ.get("FACE_SCAN_MAX_WIDTH", "800"))  # Downscale limit for session photos
 # upsample=1 is ~3x faster than upsample=2 and detects most event-photo faces.

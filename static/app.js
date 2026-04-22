@@ -592,7 +592,7 @@
                 }, { text: 'Enviando para impressão...' });
                 console.log('[print] server response:', data);
                 if (data.printed > 0) {
-                    showSnackbar(`${data.printed} imagem(ns) abertas — clique em Imprimir no visualizador para escolher a impressora`);
+                    showSnackbar(`${data.printed} foto(s) prontas no diálogo — escolha impressora e cópias e clique em Imprimir`);
                 } else {
                     showSnackbar(data.message || 'Nada foi enviado para impressão.');
                 }

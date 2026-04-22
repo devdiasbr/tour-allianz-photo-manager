@@ -50,3 +50,8 @@ dist/
 
 # ============ Cache local (encodings + thumbnails) ============
 cache/
+
+# ============ Runtime / dados gerados ============
+uploads/
+output/
+server.pid
