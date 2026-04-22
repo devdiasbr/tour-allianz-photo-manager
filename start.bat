@@ -36,6 +36,13 @@ if not exist "venv\Scripts\uvicorn.exe" (
 set HOST=127.0.0.1
 set PORT=8000
 
+:: Variaveis de configuracao (descomente e ajuste conforme necessario)
+:: set FACE_SCAN_MODE=accurate        :: "fast" (padrao) ou "accurate" (mais lento, melhor para rostos pequenos/escuros)
+:: set FACE_SCAN_WORKERS=1            :: threads por foto no scan (padrao: 1)
+:: set SCAN_EXECUTOR_WORKERS=2        :: jobs de scan simultaneos (padrao: 2)
+:: set FACE_UPSAMPLE=1                :: 1=rapido, 2=melhor deteccao de rostos pequenos
+:: set FACE_SCAN_MAX_WIDTH=800        :: largura maxima para redimensionar antes do scan
+
 :: Encerra instancia anterior se houver (PID salvo por uma execucao previa).
 if exist "server.pid" (
   echo Encerrando instancia anterior...
