@@ -185,7 +185,7 @@ if errorlevel 1 (
 REM Verificacao final
 echo.
 echo Verificando instalacao...
-venv\Scripts\python.exe -c "import fastapi, uvicorn, cv2, face_recognition_models, PIL, numpy, win32api, pkg_resources; print('OK - dependencias instaladas')"
+venv\Scripts\python.exe -c "import fastapi, uvicorn, cv2, PIL, numpy, win32api, pkg_resources; from app.services import face_service; print('OK - dependencias instaladas')"
 if errorlevel 1 (
   echo [AVISO] Alguns modulos falharam ao carregar. Veja a mensagem acima.
   pause
@@ -212,14 +212,22 @@ echo ============================================================
 echo   Setup concluido com sucesso!
 echo ============================================================
 echo.
-echo Para iniciar a aplicacao: duplo-clique em start.bat
-echo.
 echo Observacao: se a impressao abrir o visualizador em vez de
 echo imprimir, rode docs\fix-print-apply.reg como administrador
 echo (botao direito -^> Mesclar).
 echo.
-pause
-endlocal
+echo Iniciando a aplicacao...
+call start.bat
+set "START_EXIT=%ERRORLEVEL%"
+endlocal & set "START_EXIT=%START_EXIT%"
+
+if not "%START_EXIT%"=="0" (
+  echo.
+  echo [ERRO] O setup terminou, mas o start.bat falhou.
+  pause
+  exit /b %START_EXIT%
+)
+
 exit /b 0
 
 :find_python312

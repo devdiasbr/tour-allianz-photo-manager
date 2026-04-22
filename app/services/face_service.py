@@ -8,6 +8,9 @@ import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
+from app.services.face_models import prepare_face_recognition_models
+
+prepare_face_recognition_models()
 import face_recognition
 import cv2
 from PIL import Image, ImageOps
