@@ -148,9 +148,21 @@ def _scan_variant(
     locations = face_recognition.face_locations(
         small, number_of_times_to_upsample=upsample, model=FACE_DETECTION_MODEL
     )
-    encodings: list[np.ndarray] = (
-        face_recognition.face_encodings(small, locations) if locations and needs_enc else []
-    )
+    # Detection runs on the resized image (where HOG is fast), but encoding
+    # MUST run on the full-resolution crops — small-scale encodings produce
+    # muddy embeddings that collapse distinctions across age/gender/ethnicity.
+    # Encoding is cheap once boxes are known, so we pay basically nothing to
+    # keep quality. Scale the boxes back to original coordinates first.
+    encodings: list[np.ndarray] = []
+    if locations and needs_enc:
+        if scale < 1.0:
+            enc_locations = [
+                (int(t / scale), int(r / scale), int(b / scale), int(l / scale))
+                for (t, r, b, l) in locations
+            ]
+            encodings = face_recognition.face_encodings(image, enc_locations)
+        else:
+            encodings = face_recognition.face_encodings(small, locations)
     diag_small = diagnostics_from_locations(small, locations)
     passes.append({
         "variant": variant_name,
@@ -224,8 +236,10 @@ def _scan_variant(
 
 def _photo_cache_key(sha: str) -> str:
     """Per-photo cache key. Includes tunables that affect detection so a config
-    change automatically invalidates stale entries."""
-    return f"photo:{sha}:u{FACE_UPSAMPLE}:w{FACE_SCAN_MAX_WIDTH}:m{FACE_DETECTION_MODEL}:s{FACE_SCAN_MODE}"
+    change automatically invalidates stale entries. The trailing version tag
+    bumps when the encoding pipeline itself changes (e.g. encoding moved from
+    resized crops to full-resolution crops); old entries become misses."""
+    return f"photo:{sha}:u{FACE_UPSAMPLE}:w{FACE_SCAN_MAX_WIDTH}:m{FACE_DETECTION_MODEL}:s{FACE_SCAN_MODE}:v2"
 
 
 def _match_against_reference(
