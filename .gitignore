@@ -32,6 +32,7 @@ Thumbs.db
 
 # ============ OS / temporário ============
 *.log
+*.log.*
 *.tmp
 *.bak
 
@@ -52,4 +53,6 @@ dist/
 cache/
 
 # ============ Runtime / dados gerados ============
+logs/*
+!logs/.gitkeep
 server.pid

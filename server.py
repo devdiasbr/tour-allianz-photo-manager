@@ -22,7 +22,10 @@ from PIL import Image, UnidentifiedImageError
 
 from app.config import UPLOADS_DIR, OUTPUT_DIR, PRINT_DPI, SCAN_EXECUTOR_WORKERS
 
-STATIC_DIR = Path(__file__).parent / "static"
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+LOGS_DIR = BASE_DIR / "logs"
+LOGS_DIR.mkdir(exist_ok=True)
 
 from app.services import face_service, composition_service
 from app.services import cache as encoding_cache
@@ -54,9 +57,9 @@ _handler.setFormatter(_LOG_FMT)
 _handler.addFilter(_REQ_FILTER)
 
 from logging.handlers import RotatingFileHandler
-_LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server.log")
+_LOG_FILE = LOGS_DIR / "server.log"
 _file_handler = RotatingFileHandler(
-    _LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+    str(_LOG_FILE), maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
 )
 _file_handler.setFormatter(_LOG_FMT)
 _file_handler.addFilter(_REQ_FILTER)
