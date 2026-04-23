@@ -136,12 +136,31 @@
             catch { return []; }
         }
 
-        function saveRecent(path, count) {
-            let recents = loadRecent().filter(r => r.path !== path);
-            recents.unshift({ path, count, usedAt: Date.now() });
-            recents = recents.slice(0, MAX_RECENT);
-            localStorage.setItem(RECENT_KEY, JSON.stringify(recents));
+        function persistRecent(recents) {
+            localStorage.setItem(RECENT_KEY, JSON.stringify(recents.slice(0, MAX_RECENT)));
+        }
+
+        function upsertRecent(path, patch = {}) {
+            const existing = loadRecent();
+            const current = existing.find(r => r.path === path) || {};
+            const next = { ...current, path, ...patch };
+            const recents = [next, ...existing.filter(r => r.path !== path)].slice(0, MAX_RECENT);
+            persistRecent(recents);
             renderRecent();
+            return next;
+        }
+
+        function saveRecent(path, count) {
+            upsertRecent(path, { count, usedAt: Date.now() });
+        }
+
+        function saveRecentProcessing(path, count, processingMs) {
+            if (!path || !Number.isFinite(processingMs) || processingMs < 0) return;
+            upsertRecent(path, {
+                count,
+                usedAt: Date.now(),
+                processingMs: Math.round(processingMs),
+            });
         }
 
         function formatWhen(ts) {
@@ -158,6 +177,17 @@
             return new Date(ts).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
         }
 
+        function formatDuration(ms) {
+            if (!Number.isFinite(ms) || ms <= 0) return '';
+            const totalSeconds = Math.max(1, Math.round(ms / 1000));
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            if (hours > 0) return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+            if (minutes > 0) return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+            return `${seconds}s`;
+        }
+
         function renderRecent() {
             const recents = loadRecent();
             const section = document.getElementById('recentSection');
@@ -169,9 +199,15 @@
                 const item = document.createElement('div');
                 item.className = 'recent-row';
                 const name = r.path.split(/[\\\/]/).pop() || r.path;
+                const processingLabel = r.processingMs
+                    ? `<span class="r-proc">processadas em: ${formatDuration(r.processingMs)}</span>`
+                    : '';
                 item.innerHTML = `
                     <span class="r-path" title="${r.path}">${name}</span>
-                    <span class="r-count">${r.count} fotos</span>
+                    <div class="r-meta">
+                        <span class="r-count">${r.count} fotos</span>
+                        ${processingLabel}
+                    </div>
                     <span class="r-when">${formatWhen(r.usedAt)}</span>
                 `;
                 item.onclick = () => {
@@ -398,7 +434,7 @@
                 return `Analisando fotos... ${percent}%`;
             };
 
-            let scanStartedAt = null;
+            let scanStartedAt = performance.now();
 
             progress.classList.add('hidden');
             fill.style.width = '0%';
@@ -419,7 +455,6 @@
                 }
                 progress.classList.remove('hidden');
                 const jobId = startData.job_id;
-                scanStartedAt = performance.now();
 
                 while (true) {
                     await sleep(SCAN_POLL_MS);
@@ -455,6 +490,7 @@
                     }
 
                     if (j.status === 'done') {
+                        saveRecentProcessing(sessionPath, sessionPhotoCount, performance.now() - scanStartedAt);
                         fill.style.width = '100%';
                         text.textContent = `${total}/${total}`;
                         const finalText = total > 0

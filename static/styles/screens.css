@@ -1,7 +1,23 @@
 /* telas */
 
 /* ===== step 0 · folder picker ===== */
-#step0 { padding: 36px 60px; max-width: 720px; margin: 0 auto; }
+#step0 {
+  padding: 36px 60px;
+  width: 100%;
+  max-width: none;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#step0 h1,
+#step0 .subtitle,
+#step0 .path-row,
+#step0 .path-info,
+#step0 #recentSection {
+  width: min(1080px, calc(100vw - 120px));
+  max-width: 100%;
+}
 #step0 h1 { font-family: 'Inter'; font-size: 22px; font-weight: 600; color: var(--text-strong); margin: 0 0 6px; }
 #step0 .subtitle { font-size: 13px; color: var(--text-dim); margin: 0 0 var(--space-6); }
 #step0 .path-row { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); align-items: center; }
@@ -16,15 +32,41 @@
 .path-info.err { color: var(--danger); }
 .recent-list { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .recent-row {
-  display: grid; grid-template-columns: 1fr auto auto; gap: var(--space-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "path when"
+    "meta when";
+  gap: 2px var(--space-4);
   padding: 8px 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
   border-bottom: 1px solid var(--border); cursor: pointer;
 }
 .recent-row:last-child { border-bottom: 0; }
 .recent-row:hover { background: var(--surface); }
-.recent-row .r-path { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.recent-row .r-path {
+  grid-area: path;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.recent-row .r-meta {
+  grid-area: meta;
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  min-width: 0;
+}
 .recent-row .r-count { color: var(--brand); white-space: nowrap; }
-.recent-row .r-when { color: var(--text-dim); font-size: 11px; white-space: nowrap; }
+.recent-row .r-proc { color: var(--text-dim); white-space: nowrap; }
+.recent-row .r-when {
+  grid-area: when;
+  color: var(--text-dim);
+  font-size: 11px;
+  white-space: nowrap;
+  align-self: center;
+}
 
 /* ===== step 1 · webcam ===== */
 #step1 {

@@ -5,6 +5,7 @@ import uuid
 import json
 import hashlib
 import logging
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -30,7 +31,7 @@ LOGS_DIR.mkdir(exist_ok=True)
 from app.services import face_service, composition_service
 from app.services import cache as encoding_cache
 
-_INDEX_CACHE: dict = {"html": None, "mtime": 0.0}
+_INDEX_CACHE: dict = {"html": None, "mtime": 0.0, "assets_version": ""}
 
 BOOT_ID = str(int(time.time()))
 
