@@ -8,6 +8,12 @@
         let selectedPhotos = new Set();
         let orientations = {};
         let composedFiles = [];
+        let composeTemplates = [];
+        let composeSettings = {
+            templateName: '',
+            fitMode: 'contain',
+            verticalAlign: 'top',
+        };
         let loadingManager = null;
 
         class LoadingComponent {
@@ -200,19 +206,30 @@
                 item.className = 'recent-row';
                 const name = r.path.split(/[\\\/]/).pop() || r.path;
                 const processingLabel = r.processingMs
-                    ? `<span class="r-proc">processadas em: ${formatDuration(r.processingMs)}</span>`
+                    ? `
+                        <div class="r-stat">
+                            <span class="r-stat-label">Processamento</span>
+                            <span class="r-stat-value">${formatDuration(r.processingMs)}</span>
+                        </div>
+                    `
                     : '';
                 item.innerHTML = `
-                    <span class="r-path" title="${r.path}">${name}</span>
-                    <div class="r-meta">
-                        <span class="r-count">${r.count} fotos</span>
+                    <div class="r-main">
+                        <span class="r-name" title="${r.path}">${name}</span>
+                        <span class="r-pathline" title="${r.path}">${r.path}</span>
+                    </div>
+                    <div class="r-stats">
+                        <div class="r-stat">
+                            <span class="r-stat-label">Fotos</span>
+                            <span class="r-stat-value">${r.count}</span>
+                        </div>
                         ${processingLabel}
                     </div>
                     <span class="r-when">${formatWhen(r.usedAt)}</span>
                 `;
-                item.onclick = () => {
+                item.onclick = async () => {
                     document.getElementById('pathInput').value = r.path;
-                    confirmFolder();
+                    await confirmFolder(r.path);
                 };
                 list.appendChild(item);
             });
@@ -235,10 +252,16 @@
             }
         }
 
-        async function confirmFolder() {
-            const path = document.getElementById('pathInput').value.trim();
+        async function confirmFolder(pathValue = null) {
+            const input = document.getElementById('pathInput');
+            const path = (pathValue || input.value || '').trim();
             const info = document.getElementById('pathInfo');
-            if (!path) { info.className = 'path-info err'; info.textContent = 'Digite o caminho da pasta.'; return; }
+            input.value = path;
+            if (!path) {
+                info.className = 'path-info err';
+                info.textContent = 'Selecione uma pasta no Explorer.';
+                return;
+            }
 
             const data = await requestJson('/api/session/select', {
                 method: 'POST',
@@ -274,6 +297,60 @@
         async function initFolderPicker() {
             await clearRecentsOnRestart();
             renderRecent();
+        }
+
+        function currentComposeTemplate() {
+            return composeTemplates.find(t => t.name === composeSettings.templateName) || composeTemplates[0] || null;
+        }
+
+        function renderComposeTemplateMeta() {
+            const meta = document.getElementById('composeTemplateMeta');
+            if (!meta) return;
+            const template = currentComposeTemplate();
+            if (!template) {
+                meta.textContent = 'Nenhum template disponivel';
+                return;
+            }
+            meta.innerHTML = `
+                <span class="compose-meta-tag">Template ${template.label}</span>
+                <span>${template.width} x ${template.height}</span>
+                <span>area da foto ${template.width} x ${template.photo_area_height}</span>
+                <span>alinhamento topo</span>
+                <span>${template.dpi[0]} dpi</span>
+            `;
+        }
+
+        function syncComposeControls() {
+            const fitSelect = document.getElementById('composeFit');
+            if (fitSelect) fitSelect.value = composeSettings.fitMode;
+            renderComposeTemplateMeta();
+        }
+
+        async function initComposeSettings() {
+            const fitSelect = document.getElementById('composeFit');
+            if (!fitSelect) return;
+
+            fitSelect.onchange = () => {
+                composeSettings.fitMode = fitSelect.value;
+                renderComposeTemplateMeta();
+            };
+
+            try {
+                const res = await fetch('/api/compose/options');
+                const data = await res.json();
+                if (!res.ok || !data.ok) throw new Error(data.message || `HTTP ${res.status}`);
+
+                composeTemplates = data.templates || [];
+                const defaults = data.defaults || {};
+                composeSettings.templateName = defaults.template_name || composeTemplates[0]?.name || '';
+                composeSettings.fitMode = defaults.fit_mode || composeSettings.fitMode;
+                composeSettings.verticalAlign = defaults.vertical_align || composeSettings.verticalAlign;
+
+                syncComposeControls();
+            } catch (err) {
+                composeTemplates = [];
+                document.getElementById('composeTemplateMeta').textContent = err.message;
+            }
         }
 
         // === WEBCAM ===
@@ -592,6 +669,10 @@
                 showSnackbar('Selecione pelo menos uma foto');
                 return;
             }
+            if (!composeSettings.templateName) {
+                showSnackbar('Escolha um template antes de compor');
+                return;
+            }
 
             try {
                 const data = await requestJson('/api/compose', {
@@ -599,7 +680,10 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         selected: Array.from(selectedPhotos),
-                        orientations: orientations
+                        orientations: orientations,
+                        template_name: composeSettings.templateName,
+                        fit_mode: composeSettings.fitMode,
+                        vertical_align: composeSettings.verticalAlign
                     })
                 }, { text: 'Compondo imagens...' });
 
@@ -826,3 +910,4 @@
         // === INIT ===
         loadingManager = new LoadingComponent();
         initFolderPicker();
+        initComposeSettings();

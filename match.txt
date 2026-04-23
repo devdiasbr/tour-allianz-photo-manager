@@ -1,0 +1,15 @@
+tunning em maquina com menor processamento para reduzir o tempo de processamento
+redimensionar foto para aplicar o template padrão
+troca de template = footer_template\TEMPLATE PALMEIRAS.png
+
+o template deve ser alinhado pelo topo
+
+dimensoes da foto
+
+2362x1772
+
+largura 2362 pixels
+altura 1772 pixels
+resolução horizontal 96 dpi
+resolução vertical 96 dpi
+intensidade de bits 32

@@ -2,7 +2,9 @@ import os
 
 # Base paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TEMPLATE_PATH = os.path.join(BASE_DIR, "footer_template", "template_allianz.jpg")
+TEMPLATES_DIR = os.path.join(BASE_DIR, "footer_template")
+DEFAULT_TEMPLATE_NAME = "TEMPLATE PALMEIRAS.png"
+TEMPLATE_PATH = os.path.join(TEMPLATES_DIR, DEFAULT_TEMPLATE_NAME)
 UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
 OUTPUT_DIR = os.path.join(BASE_DIR, "output")
 
@@ -20,6 +22,8 @@ LANDSCAPE_W = 2362  # 20cm at 300 DPI
 LANDSCAPE_H = 1772  # 15cm at 300 DPI
 PORTRAIT_W = 1772   # 15cm at 300 DPI
 PORTRAIT_H = 2362   # 20cm at 300 DPI
+DEFAULT_COMPOSE_FIT_MODE = "contain"
+DEFAULT_COMPOSE_VERTICAL_ALIGN = "top"
 
 # Face recognition
 FACE_TOLERANCE = 0.50 # More generous matching (default 0.55)
@@ -38,7 +42,7 @@ SCAN_EXECUTOR_WORKERS = int(os.environ.get("SCAN_EXECUTOR_WORKERS", "2"))
 # Camera
 CAMERA_PREVIEW_W = 640
 CAMERA_PREVIEW_H = 480
-CAMERA_FPS = 15
+CAMERA_FPS = 60
 
 # UI
 THUMBNAIL_SIZE = (240, 160)

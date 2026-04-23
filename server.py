@@ -21,7 +21,14 @@ from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 from PIL import Image, UnidentifiedImageError
 
-from app.config import UPLOADS_DIR, OUTPUT_DIR, PRINT_DPI, SCAN_EXECUTOR_WORKERS
+from app.config import (
+    DEFAULT_COMPOSE_FIT_MODE,
+    DEFAULT_COMPOSE_VERTICAL_ALIGN,
+    OUTPUT_DIR,
+    PRINT_DPI,
+    SCAN_EXECUTOR_WORKERS,
+    UPLOADS_DIR,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -217,6 +224,12 @@ class SelectSessionRequest(BaseModel):
 class ComposeRequest(BaseModel):
     selected: list[str] = Field(default_factory=list)
     orientations: dict[str, str] = Field(default_factory=dict)
+    template_name: Optional[str] = None
+    fit_mode: str = Field(default=DEFAULT_COMPOSE_FIT_MODE, pattern="^(cover|contain)$")
+    vertical_align: str = Field(
+        default=DEFAULT_COMPOSE_VERTICAL_ALIGN,
+        pattern="^(top|center|bottom)$",
+    )
 
 
 class PrintFile(BaseModel):
@@ -289,6 +302,25 @@ def root():
 @app.get("/api/boot-id")
 async def get_boot_id():
     return {"boot_id": BOOT_ID}
+
+
+@app.get("/api/compose/options")
+async def get_compose_options():
+    try:
+        templates = composition_service.list_templates()
+    except ValueError as e:
+        return JSONResponse({"ok": False, "message": str(e)}, status_code=500)
+
+    default_template = next((t["name"] for t in templates if t.get("is_default")), None)
+    return {
+        "ok": True,
+        "templates": templates,
+        "defaults": {
+            "template_name": default_template or (templates[0]["name"] if templates else None),
+            "fit_mode": DEFAULT_COMPOSE_FIT_MODE,
+            "vertical_align": DEFAULT_COMPOSE_VERTICAL_ALIGN,
+        },
+    }
 
 
 @app.get("/api/sessions")
@@ -543,6 +575,7 @@ async def compose_photos(req: ComposeRequest):
     """Compose selected photos with footer template, grouped by session in output/."""
     try:
         state = get_state()
+        template = composition_service.get_template_spec(req.template_name)
         face_lookup = {}
         if state["match_results"]:
             for mr in state["match_results"]:
@@ -557,15 +590,37 @@ async def compose_photos(req: ComposeRequest):
         for photo_path in req.selected:
             orientation = req.orientations.get(photo_path, "landscape")
             face_locs = face_lookup.get(photo_path, None)
-            composed = composition_service.compose_photo(photo_path, orientation, face_locs)
-            out_path = composition_service.save_composed(composed, photo_path, session_name)
+            composed = composition_service.compose_photo(
+                photo_path,
+                orientation,
+                face_locs,
+                template_name=template["name"],
+                fit_mode=req.fit_mode,
+                vertical_align=req.vertical_align,
+            )
+            variant_suffix = (
+                f"{template['name'].rsplit('.', 1)[0]}_{req.fit_mode}_{req.vertical_align}"
+            )
+            out_path = composition_service.save_composed(
+                composed,
+                photo_path,
+                session_name,
+                variant_suffix=variant_suffix,
+                dpi=tuple(template["dpi"]),
+            )
             rel = os.path.relpath(out_path, OUTPUT_DIR).replace("\\", "/")
             composed_files.append({
                 "original": photo_path,
                 "output": out_path,
                 "filename": rel,
+                "template_name": template["name"],
             })
         return {"ok": True, "files": composed_files}
+    except ValueError as e:
+        return JSONResponse(
+            {"ok": False, "message": str(e)},
+            status_code=400,
+        )
     except Exception as e:
         log.exception("compose_photos failed")
         return JSONResponse(

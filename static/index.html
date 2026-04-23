@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tour Allianz Parque - Photo Manager</title>
-    <link rel="stylesheet" href="/static/styles/tokens.css">
-    <link rel="stylesheet" href="/static/styles/base.css">
-    <link rel="stylesheet" href="/static/styles/components.css">
-    <link rel="stylesheet" href="/static/styles/screens.css">
-    <link rel="stylesheet" href="/static/styles/overlays.css">
+    <link rel="stylesheet" href="/static/styles/tokens.css?v=20260423c">
+    <link rel="stylesheet" href="/static/styles/base.css?v=20260423c">
+    <link rel="stylesheet" href="/static/styles/components.css?v=20260423c">
+    <link rel="stylesheet" href="/static/styles/screens.css?v=20260423c">
+    <link rel="stylesheet" href="/static/styles/overlays.css?v=20260423c">
     <script src="/static/theme.js"></script>
 </head>
 <body>
@@ -44,11 +44,8 @@
                 <svg><use href="#i-folder"/></svg>Procurar
             </button>
             <input type="text" id="pathInput" class="input input-mono path-input"
-                   placeholder="/caminho/para/a/sessão"
-                   onkeydown="if(event.key==='Enter') confirmFolder()">
-            <button class="btn btn-primary" onclick="confirmFolder()">
-                <svg><use href="#i-arrow-right"/></svg>Confirmar
-            </button>
+                   placeholder="Selecione uma pasta no Explorer"
+                   readonly>
         </div>
         <div id="pathInfo" class="path-info"></div>
         <div id="recentSection" class="hidden">
@@ -115,6 +112,16 @@
             <button class="btn btn-primary" onclick="composeSelected()">
                 <svg><use href="#i-print"/></svg>Compor e Imprimir
             </button>
+        </div>
+        <div class="compose-settings">
+            <div class="compose-field">
+                <span class="compose-field-label">Ajuste da foto</span>
+                <select id="composeFit" class="input input-mono">
+                    <option value="contain">Foto inteira</option>
+                    <option value="cover">Preencher recortando</option>
+                </select>
+            </div>
+            <div class="compose-template-meta" id="composeTemplateMeta"></div>
         </div>
         <div class="scan-bar hidden" id="scanProgress">
             <span>scanning <b id="scanText">0/0</b></span>
@@ -196,7 +203,7 @@
         <div class="carousel-info" id="carouselInfo"></div>
     </div>
 
-    <script type="module" src="/static/face-detection.js"></script>
-    <script src="/static/app.js?v=20260419a"></script>
+    <script type="module" src="/static/face-detection.js?v=20260423c"></script>
+    <script src="/static/app.js?v=20260423c"></script>
 </body>
 </html>
