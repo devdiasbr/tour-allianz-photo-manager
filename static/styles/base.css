@@ -15,12 +15,28 @@ button { cursor: pointer; border: 0; background: transparent; padding: 0; }
 .data { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; }
 
 .app-footer {
-  text-align: center;
-  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
-  color: var(--text-fade);
+  letter-spacing: .06em;
+  color: var(--text-dim);
   border-top: 1px solid var(--border);
+  background: var(--surface);
 }
-.app-footer a { color: var(--text-dim); text-decoration: none; }
+.app-footer-links {
+  display: flex;
+  gap: 16px;
+}
+.app-footer a {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color .15s;
+}
 .app-footer a:hover { color: var(--brand); }
+.app-footer svg { display: block; flex-shrink: 0; }
