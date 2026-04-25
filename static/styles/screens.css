@@ -155,7 +155,7 @@
 #step1 {
   display: flex; gap: var(--space-4); padding: var(--space-4);
   align-items: stretch; justify-content: center;
-  height: calc(100vh - 85px); box-sizing: border-box;
+  height: calc(100vh - 85px - 32px); box-sizing: border-box;
 }
 #step1 .cam-col {
   background: var(--surface); border: 1px solid var(--border);
