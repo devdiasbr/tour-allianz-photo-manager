@@ -1,14 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; height: 100%; }
+html, body { margin: 0; padding: 0; }
 body {
   background: var(--bg); color: var(--text);
   font-family: 'Inter', system-ui, sans-serif; font-size: 13px; line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  display: flex; flex-direction: column; min-height: 100vh;
 }
-body > .app-footer { margin-top: auto; }
 button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
 button { cursor: pointer; border: 0; background: transparent; padding: 0; }
 .hidden { display: none !important; }
@@ -17,17 +15,20 @@ button { cursor: pointer; border: 0; background: transparent; padding: 0; }
 .data { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; }
 
 .app-footer {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 10px 20px;
+  padding: 7px 20px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
   letter-spacing: .06em;
   color: var(--text-dim);
   border-top: 1px solid var(--border);
   background: var(--surface);
+  z-index: 10;
 }
 .app-footer-sep { color: var(--border-strong); }
 .app-footer a {
