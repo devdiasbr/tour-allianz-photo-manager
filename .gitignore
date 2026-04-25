@@ -21,7 +21,7 @@ htmlcov/
 .tox/
 .mypy_cache/
 .ruff_cache/
-.playwright*
+.playwright-cli/
 
 # ============ Editores / IDE ============
 .vscode/
