@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Proposta Comercial — Photo Manager — Eduardo Santana Produções</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #6b6b6b;
+    --accent: #0a7d4e;
+    --accent-soft: #e8f5ee;
+    --border: #e2e2e2;
+    --table-stripe: #fafafa;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1419;
+      --fg: #e8eaed;
+      --muted: #9aa0a6;
+      --accent: #34d399;
+      --accent-soft: #1a2f25;
+      --border: #2d3138;
+      --table-stripe: #161b21;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    line-height: 1.6;
+    font-size: 14px;
+  }
+
+  .page {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 48px 56px;
+  }
+
+  header {
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 24px;
+    margin-bottom: 36px;
+  }
+
+  header .ribbon {
+    display: inline-block;
+    padding: 4px 12px;
+    background: var(--accent);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 3px;
+    margin-bottom: 12px;
+  }
+
+  header h1 {
+    margin: 0 0 4px;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  header .subtitle {
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 24px;
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--table-stripe);
+    border-radius: 6px;
+    font-size: 13px;
+  }
+
+  .meta-grid .label {
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  h2 {
+    color: var(--accent);
+    font-size: 18px;
+    font-weight: 700;
+    margin: 36px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 18px 0 8px;
+    color: var(--fg);
+  }
+
+  p { margin: 0 0 12px; }
+
+  ul, ol { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 4px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 18px;
+    font-size: 13px;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  th {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  tbody tr:nth-child(even) { background: var(--table-stripe); }
+
+  .price-box {
+    background: linear-gradient(135deg, var(--accent-soft) 0%, transparent 100%);
+    border: 2px solid var(--accent);
+    border-radius: 10px;
+    padding: 24px;
+    margin: 20px 0;
+    text-align: center;
+  }
+
+  .price-box .label {
+    font-size: 13px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+
+  .price-box .value {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .price-box .desc {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+
+  .pay-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0;
+  }
+
+  .pay-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  .pay-card h4 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .pay-card .amount {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 4px 0;
+  }
+
+  .pay-card .note { font-size: 12px; color: var(--muted); }
+
+  .alert {
+    background: var(--accent-soft);
+    border-left: 4px solid var(--accent);
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .signature-block {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 2px solid var(--border);
+  }
+
+  .signature-block .name {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .signature-block .info {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .print-hint {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--accent);
+    color: white;
+    padding: 10px 18px;
+    border-radius: 24px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border: none;
+    font-family: inherit;
+  }
+
+  .print-hint:hover { opacity: 0.92; }
+
+  @media print {
+    .print-hint { display: none; }
+    .page { padding: 24px 32px; max-width: 100%; }
+    h2 { page-break-after: avoid; }
+    table, .price-box, .pay-card { page-break-inside: avoid; }
+    body { font-size: 11pt; }
+  }
+
+  @page {
+    size: A4;
+    margin: 18mm;
+  }
+</style>
+</head>
+<body>
+
+<button class="print-hint" onclick="window.print()">Imprimir / Salvar PDF</button>
+
+<div class="page">
+
+  <header>
+    <span class="ribbon">Proposta Comercial</span>
+    <h1>Photo Manager</h1>
+    <p class="subtitle">Sistema de gerenciamento e reconhecimento facial para fotografia de eventos</p>
+
+    <div class="meta-grid">
+      <div><span class="label">Cliente:</span> Eduardo Santana Produções</div>
+      <div><span class="label">Fornecedor:</span> Bruno Dias</div>
+      <div><span class="label">Referência:</span> PROP-2026-04-001</div>
+      <div><span class="label">Data:</span> 25 de abril de 2026</div>
+      <div><span class="label">Validade:</span> 30 dias</div>
+      <div><span class="label">CPF:</span> 414.078.848-83</div>
+    </div>
+  </header>
+
+  <h2>1. Apresentação</h2>
+  <p>Esta proposta tem como objetivo formalizar o fornecimento e a implantação do <strong>Photo Manager</strong>, um software desktop de gerenciamento e processamento automatizado de fotos para eventos, com tecnologia de reconhecimento facial.</p>
+  <p>A solução foi desenvolvida sob medida para fluxos de trabalho de fotografia em eventos, permitindo que o operador capture rostos de referência via webcam, escaneie sessões de fotos e identifique automaticamente todas as imagens em que cada pessoa aparece — eliminando a necessidade de revisão manual foto a foto.</p>
+
+  <h2>2. Descrição da Solução</h2>
+  <p>O Photo Manager é uma aplicação local executada no próprio computador do cliente (sem necessidade de internet ou servidor externo) com interface moderna acessível pelo navegador. O fluxo é dividido em quatro etapas:</p>
+  <ol>
+    <li><strong>Sessão</strong> — seleção da pasta com as fotos do evento</li>
+    <li><strong>Captura</strong> — registro dos rostos de referência via webcam</li>
+    <li><strong>Fotos</strong> — escaneamento automatizado e exibição das imagens correspondentes</li>
+    <li><strong>Imprimir</strong> — composição final com template personalizado e envio para impressora</li>
+  </ol>
+
+  <h2>3. Funcionalidades Entregues</h2>
+
+  <h3>Captura e processamento de rostos</h3>
+  <ul>
+    <li>Captura de rostos via webcam com detecção automática</li>
+    <li>Suporte a múltiplos rostos de referência simultâneos</li>
+    <li>Algoritmo de reconhecimento facial baseado em <code>dlib</code> e <code>face_recognition</code> (estado da arte)</li>
+    <li>Cache de detecções por imagem (rescans subsequentes em segundos)</li>
+    <li>Modos de scan ajustáveis: rápido (padrão) e preciso (rostos pequenos/escuros)</li>
+  </ul>
+
+  <h3>Gerenciamento de sessões</h3>
+  <ul>
+    <li>Seleção de pasta de fotos via Explorador de Arquivos nativo do Windows</li>
+    <li>Histórico das 10 sessões mais recentes com indicadores de quantidade e tempo de processamento</li>
+    <li>Suporte a formatos JPG, JPEG e PNG</li>
+    <li>Estatísticas de progresso em tempo real durante o scan</li>
+  </ul>
+
+  <h3>Composição e impressão</h3>
+  <ul>
+    <li>Templates de composição personalizados (footer com logo/marca do evento)</li>
+    <li>Modos de enquadramento: cobrir (cover) ou conter (contain)</li>
+    <li>Alinhamento vertical configurável (topo, centro, rodapé)</li>
+    <li>Suporte a orientação retrato e paisagem por foto</li>
+    <li>Envio direto para impressora padrão do sistema</li>
+  </ul>
+
+  <h3>Interface</h3>
+  <ul>
+    <li>Tema dark e light com toggle visível</li>
+    <li>Carrossel de visualização ampliada</li>
+    <li>Barra de status com contagem de fotos e matches em tempo real</li>
+    <li>Snackbar de notificações</li>
+    <li>Layout responsivo otimizado para uso em desktop</li>
+  </ul>
+
+  <h3>Performance e confiabilidade</h3>
+  <ul>
+    <li>Cache persistente de encodings em disco (rescans não recomputam)</li>
+    <li>Progress incremental (crash no meio do scan não perde o trabalho já feito)</li>
+    <li>Logs detalhados em pasta dedicada para diagnóstico</li>
+    <li>Thumbnails pré-gerados por sessão para navegação fluida</li>
+    <li>Suporte opcional a processamento multi-thread (configurável)</li>
+  </ul>
+
+  <h2>4. Stack Tecnológica</h2>
+  <table>
+    <thead>
+      <tr><th>Componente</th><th>Tecnologia</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Backend</td><td>Python 3.10+ com FastAPI e Uvicorn</td></tr>
+      <tr><td>Reconhecimento facial</td><td>dlib + face_recognition</td></tr>
+      <tr><td>Processamento de imagem</td><td>OpenCV, Pillow, NumPy</td></tr>
+      <tr><td>Frontend</td><td>HTML5, CSS3, JavaScript ES2020 (sem dependências externas)</td></tr>
+      <tr><td>Câmera no navegador</td><td>MediaPipe Vision</td></tr>
+      <tr><td>Impressão</td><td>pywin32 (integração nativa Windows)</td></tr>
+      <tr><td>Servidor</td><td>Local (127.0.0.1), porta 8000</td></tr>
+    </tbody>
+  </table>
+
+  <h2>5. Requisitos de Hardware e Sistema</h2>
+
+  <h3>Mínimos</h3>
+  <ul>
+    <li><strong>Sistema operacional:</strong> Windows 10 (64-bit) ou superior</li>
+    <li><strong>Processador:</strong> Intel Core i5 (8ª geração) ou equivalente AMD Ryzen 5</li>
+    <li><strong>Memória RAM:</strong> 8 GB</li>
+    <li><strong>Armazenamento:</strong> 2 GB livres + espaço adicional para fotos</li>
+    <li><strong>Webcam:</strong> integrada ou USB (resolução mínima 720p)</li>
+    <li><strong>Impressora:</strong> instalada e configurada como padrão no Windows</li>
+    <li><strong>Navegador:</strong> Google Chrome, Microsoft Edge ou Firefox (versão atualizada)</li>
+  </ul>
+
+  <h3>Recomendados (acima de 500 fotos por evento)</h3>
+  <ul>
+    <li><strong>Processador:</strong> Intel Core i7 (10ª geração ou superior) / AMD Ryzen 7</li>
+    <li><strong>Memória RAM:</strong> 16 GB</li>
+    <li><strong>Armazenamento:</strong> SSD com 10 GB livres</li>
+    <li><strong>Webcam:</strong> Full HD (1080p) com boa iluminação no ambiente</li>
+  </ul>
+
+  <h2>6. Prazo de Entrega e Instalação</h2>
+  <table>
+    <thead>
+      <tr><th>Etapa</th><th>Prazo</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Assinatura da proposta e pagamento da entrada</td><td>Dia 0</td></tr>
+      <tr><td>Agendamento da instalação</td><td>Até 3 dias úteis após entrada</td></tr>
+      <tr><td>Instalação presencial ou remota e configuração</td><td>1 dia útil</td></tr>
+      <tr><td>Treinamento operacional (até 2 horas)</td><td>Mesmo dia da instalação</td></tr>
+      <tr><td>Início da garantia de 30 dias</td><td>Dia da entrega</td></tr>
+    </tbody>
+  </table>
+  <div class="alert"><strong>Total: até 5 dias úteis</strong> entre assinatura e operação.</div>
+
+  <h2>7. Treinamento Incluso</h2>
+  <p>Está incluso no valor da implantação <strong>uma sessão de treinamento de até 2 horas</strong>, presencial ou via videoconferência, cobrindo:</p>
+  <ul>
+    <li>Operação do fluxo completo (sessão → captura → fotos → impressão)</li>
+    <li>Boas práticas para qualidade de reconhecimento (iluminação, distância, ângulo)</li>
+    <li>Gerenciamento de pastas de eventos e organização de arquivos</li>
+    <li>Uso dos templates de composição</li>
+    <li>Configuração da impressora e troubleshooting básico</li>
+    <li>Diagnóstico de problemas via logs</li>
+  </ul>
+  <p>Material de apoio em PDF é entregue ao final da sessão.</p>
+
+  <h2>8. Política de Atualizações</h2>
+  <ul>
+    <li><strong>Correções de bugs durante a garantia (30 dias):</strong> sem custo adicional</li>
+    <li><strong>Correções de bugs após a garantia:</strong> sob demanda, cobradas à parte por hora trabalhada</li>
+    <li><strong>Novas funcionalidades:</strong> orçamento separado, baseado em escopo e estimativa de horas</li>
+    <li><strong>Atualizações de bibliotecas/segurança:</strong> podem ser solicitadas a qualquer momento, cobradas como manutenção sob demanda</li>
+  </ul>
+
+  <h2>9. Termos Legais</h2>
+
+  <h3>Propriedade intelectual</h3>
+  <p>O código-fonte da aplicação permanece de propriedade do fornecedor. O cliente recebe <strong>licença de uso perpétua, não exclusiva e intransferível</strong> para uso comercial nos seus próprios eventos.</p>
+
+  <h3>Confidencialidade (NDA)</h3>
+  <p>O fornecedor compromete-se a tratar como confidencial qualquer informação, lista de clientes, fotos ou material de eventos a que tenha acesso durante a instalação, treinamento ou suporte. O cliente compromete-se a não redistribuir, sublicenciar ou compartilhar a aplicação com terceiros.</p>
+
+  <h3>LGPD (Lei Geral de Proteção de Dados)</h3>
+  <p>A aplicação processa imagens faciais, classificadas como <strong>dados pessoais sensíveis</strong> pela LGPD (Art. 5º, II). É <strong>responsabilidade exclusiva do cliente (controlador dos dados)</strong>:</p>
+  <ul>
+    <li>Obter consentimento expresso dos titulares (pessoas fotografadas) para captura, processamento e armazenamento das imagens</li>
+    <li>Manter registros de consentimento conforme exigido pela ANPD</li>
+    <li>Definir e cumprir prazo de retenção das fotos</li>
+    <li>Atender solicitações de exclusão por parte dos titulares</li>
+    <li>Implementar medidas de segurança no ambiente onde a aplicação opera</li>
+  </ul>
+  <p>A aplicação roda <strong>inteiramente local</strong> (sem envio de dados para nuvem ou terceiros), o que facilita o cumprimento da LGPD, mas a responsabilidade legal permanece do cliente.</p>
+
+  <h3>Garantia</h3>
+  <p>A garantia de 30 dias cobre exclusivamente correções de bugs e defeitos de funcionamento. <strong>Não cobre:</strong></p>
+  <ul>
+    <li>Falhas decorrentes de alteração não autorizada do código ou da configuração</li>
+    <li>Problemas causados por hardware defeituoso, drivers desatualizados ou ambiente de rede</li>
+    <li>Mudanças no sistema operacional ou em dependências externas (impressoras, webcams) após a entrega</li>
+  </ul>
+
+  <h3>Limitação de responsabilidade</h3>
+  <p>A responsabilidade total do fornecedor está limitada ao valor pago pelo cliente nesta proposta. O fornecedor não responde por lucros cessantes, perdas indiretas ou danos a terceiros decorrentes do uso da aplicação.</p>
+
+  <h3>Foro</h3>
+  <p>Fica eleito o foro da Comarca de São Paulo/SP para dirimir quaisquer questões oriundas deste contrato, com renúncia expressa a qualquer outro, por mais privilegiado que seja.</p>
+
+  <h2>10. Investimento</h2>
+
+  <div class="price-box">
+    <div class="label">Valor total do projeto</div>
+    <div class="value">R$ 6.500,00</div>
+    <div class="desc">Licença perpétua + implantação + treinamento + 30 dias de garantia</div>
+  </div>
+
+  <h3>Forma de pagamento</h3>
+  <div class="pay-options">
+    <div class="pay-card">
+      <h4>À vista</h4>
+      <div class="amount">R$ 6.175,00</div>
+      <div class="note">Com 5% de desconto, no ato da assinatura</div>
+    </div>
+    <div class="pay-card">
+      <h4>Parcelado em 2x</h4>
+      <div class="amount">2 × R$ 3.250,00</div>
+      <div class="note">50% na assinatura + 50% na entrega</div>
+    </div>
+  </div>
+
+  <p><strong>Meios aceitos:</strong> PIX, transferência bancária ou boleto.</p>
+
+  <h3>Após o período de garantia (a partir do 31º dia)</h3>
+  <table>
+    <thead>
+      <tr><th>Serviço</th><th>Valor</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Correções de bugs sob demanda</td><td>R$ 150,00 / hora</td></tr>
+      <tr><td>Pequenos ajustes e configurações</td><td>R$ 150,00 / hora</td></tr>
+      <tr><td>Novas funcionalidades</td><td>Orçamento à parte mediante escopo</td></tr>
+    </tbody>
+  </table>
+  <p class="note" style="font-size:12px;color:var(--muted);">Mínimo de cobrança: 1 hora por chamado.</p>
+
+  <h2>11. Aceite</h2>
+  <p>Para aceitar esta proposta, basta responder a este documento confirmando os termos e o modelo de pagamento escolhido.</p>
+  <p>A partir da confirmação, o fornecedor enviará os dados bancários e iniciará o agendamento da instalação.</p>
+
+  <div class="signature-block">
+    <div class="name">Bruno Dias</div>
+    <div class="info">CPF: 414.078.848-83 — São Paulo / SP</div>
+    <div class="info">Telefone / WhatsApp: +55 (11) 95448-5244</div>
+    <div class="info">E-mail: dev.brunodias@gmail.com</div>
+  </div>
+
+  <footer>
+    Proposta PROP-2026-04-001 emitida em 25/04/2026 — Validade: 30 dias.<br>
+    Após esse prazo, valores e condições estão sujeitos a revisão.
+  </footer>
+
+</div>
+
+</body>
+</html>
