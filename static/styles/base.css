@@ -7,10 +7,8 @@ body {
   font-family: 'Inter', system-ui, sans-serif; font-size: 13px; line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  padding-bottom: 40px;
 }
-body > .content { flex: 1 0 auto; }
 button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
 button { cursor: pointer; border: 0; background: transparent; padding: 0; }
 .hidden { display: none !important; }
@@ -19,18 +17,22 @@ button { cursor: pointer; border: 0; background: transparent; padding: 0; }
 .data { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; }
 
 .app-footer {
-  flex-shrink: 0;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 10px 20px;
+  padding: 8px 20px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
   letter-spacing: .06em;
   color: var(--text-dim);
   border-top: 1px solid var(--border);
   background: var(--surface);
+  z-index: 100;
 }
 .app-footer-sep { color: var(--border-strong); }
 .app-footer a {
