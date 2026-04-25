@@ -2,10 +2,10 @@
 setlocal
 cd /d "%~dp0"
 
-title Tour Allianz - Photo Manager
+title Photo Manager
 
 echo ============================================================
-echo   Tour Allianz Parque - Photo Manager
+echo   Photo Manager
 echo ============================================================
 echo.
 

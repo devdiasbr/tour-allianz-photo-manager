@@ -2,10 +2,10 @@
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
-title Tour Allianz - Setup
+title Photo Manager - Setup
 
 echo ============================================================
-echo   Tour Allianz Parque - Setup de Ambiente
+echo   Photo Manager - Setup de Ambiente
 echo ============================================================
 echo.
 echo Este script ira:

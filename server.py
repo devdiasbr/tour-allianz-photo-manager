@@ -126,7 +126,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Tour Allianz Parque - Photo Manager", lifespan=lifespan)
+app = FastAPI(title="Photo Manager", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -871,7 +871,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 if __name__ == "__main__":
     import argparse
     import uvicorn
-    parser = argparse.ArgumentParser(description="Tour Allianz Parque - Photo Manager")
+    parser = argparse.ArgumentParser(description="Photo Manager")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--reload", action="store_true")

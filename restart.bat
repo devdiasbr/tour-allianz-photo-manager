@@ -2,10 +2,10 @@
 setlocal
 cd /d "%~dp0"
 
-title Tour Allianz - Reiniciar Servidor
+title Photo Manager - Reiniciar Servidor
 
 echo ============================================================
-echo   Tour Allianz Parque - Reiniciar Servidor
+echo   Photo Manager - Reiniciar Servidor
 echo ============================================================
 echo.
 

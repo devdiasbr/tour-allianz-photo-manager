@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 
-title Tour Allianz - Parar Servidor
+title Photo Manager - Parar Servidor
 
 if not exist "server.pid" (
   echo Nenhum PID salvo encontrado. Servidor pode ja estar parado.
