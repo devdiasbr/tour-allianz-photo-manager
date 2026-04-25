@@ -35,7 +35,7 @@ if not exist "venv\Scripts\uvicorn.exe" (
 
 set HOST=127.0.0.1
 set PORT=8000
-set DNS_ALIAS=photo-manager
+set DNS_ALIAS=photo-manager.local
 set "LOG_DIR=logs"
 
 :: Variaveis de configuracao (descomente e ajuste conforme necessario)

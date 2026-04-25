@@ -220,7 +220,7 @@ echo.
 
 REM Registra DNS local no hosts
 set "HOSTS_FILE=%SystemRoot%\System32\drivers\etc\hosts"
-set "DNS_ALIAS=photo-manager"
+set "DNS_ALIAS=photo-manager.local"
 set "DNS_PORT=8000"
 findstr /i /c:"%DNS_ALIAS%" "%HOSTS_FILE%" >nul 2>&1
 if errorlevel 1 (
