@@ -380,8 +380,65 @@ def build() -> Document:
     )
     add_para(doc, "M�nimo de cobran�a: 1 hora por chamado.", color=MUTED, size=9)
 
-    # 11. Aceite
-    add_heading(doc, "11. Aceite", 1)
+    # 11. Adendo � Evolu��o E-commerce
+    add_heading(doc, "11. Adendo � Evolu��o para Plataforma E-commerce de Fotos", 1)
+    add_para(doc, "Como cortesia ao cliente desta proposta, oferecemos a possibilidade de evoluir a aplica��o local atual para uma plataforma online de venda de fotos, hospedada em infraestrutura cloud profissional. Esta evolu��o � opcional e pode ser contratada a qualquer momento dentro de 12 meses ap�s a entrega da aplica��o original.")
+
+    add_heading(doc, "O que muda", 2)
+    add_para(doc, "A solu��o atual (uso interno, instala��o local) � transformada em uma plataforma web acess�vel ao p�blico final, permitindo que os convidados/participantes dos eventos comprem suas pr�prias fotos diretamente online, sem intermedia��o manual.")
+
+    add_heading(doc, "Funcionalidades adicionais inclu�das", 2)
+    add_bullets(doc, [
+        "Cat�logo p�blico de eventos e �lbuns",
+        "Reconhecimento facial integrado (o visitante envia uma selfie e a plataforma localiza automaticamente todas as fotos em que ele aparece)",
+        "Carrinho de compras e checkout integrado a gateway de pagamento",
+        "Painel administrativo para gest�o de eventos, pre�os e relat�rios de venda",
+        "�rea do cliente (login do comprador, hist�rico de pedidos, downloads liberados)",
+        "Marca d'�gua autom�tica nas pr�vias e remo��o ap�s pagamento",
+        "Dom�nio pr�prio (.com.br a definir pelo cliente, sujeito � disponibilidade no registro.br)",
+        "Certificado SSL e prote��o DDoS b�sica",
+        "Layout responsivo para celular, tablet e desktop",
+    ])
+
+    add_heading(doc, "Investimento da evolu��o", 2)
+    add_simple_table(doc,
+        ["Item", "Valor"],
+        [
+            ["Valor cheio do desenvolvimento da plataforma", "R$ 15.000,00"],
+            ["Desconto promocional (15%)", "- R$ 2.250,00"],
+            ["Cr�dito da implanta��o atual (Cl�usula 10)", "- R$ 6.500,00"],
+            ["Saldo a pagar pela evolu��o", "R$ 6.250,00"],
+        ]
+    )
+    add_para(doc, "Forma de pagamento do saldo: 50% na assinatura do adendo + 50% na entrega da plataforma.", bold=True)
+
+    add_heading(doc, "Mensalidade ap�s o go-live", 2)
+    add_para(doc, "A plataforma online exige hospedagem cloud, monitoramento e suporte cont�nuos. O cliente escolhe entre dois planos:")
+    add_simple_table(doc,
+        ["Item", "Essencial", "Completo"],
+        [
+            ["Mensalidade", "R$ 700/m�s", "R$ 1.000/m�s"],
+            ["Infraestrutura cloud gerenciada", "Sim", "Sim"],
+            ["Backups autom�ticos di�rios", "Sim", "Sim"],
+            ["Dom�nio .com.br (renova��o anual)", "Sim", "Sim"],
+            ["Certificado SSL", "Sim", "Sim"],
+            ["Monitoramento 24/7 com alertas", "Sim", "Sim"],
+            ["Atualiza��es de seguran�a e bibliotecas", "Sim", "Sim"],
+            ["Horas de suporte mensal inclu�das", "2h", "4h"],
+            ["SLA de resposta", "24h �teis", "8h �teis"],
+            ["Hora excedente de suporte", "R$ 180,00/h", "R$ 150,00/h"],
+        ]
+    )
+    add_para(doc, "A mensalidade � cobrada a partir do m�s seguinte ao go-live da plataforma. Custos extras de cloud (storage acima de 200 GB ou egress acima de 300 GB/m�s) s�o repassados ao custo, mediante aviso pr�vio.", color=MUTED, size=9)
+
+    add_heading(doc, "Prazo de desenvolvimento", 2)
+    add_para(doc, "A evolu��o tem prazo estimado de 45 a 60 dias �teis entre a assinatura do adendo e o go-live, sujeito a valida��es de design e homologa��o com o cliente.")
+
+    add_heading(doc, "Validade desta oferta", 2)
+    add_para(doc, "Este adendo � v�lido por 12 meses a partir da data de assinatura da proposta principal. Ap�s esse prazo, valores e condi��es est�o sujeitos a revis�o.", bold=True)
+
+    # 12. Aceite
+    add_heading(doc, "12. Aceite", 1)
     add_para(doc, "Para aceitar esta proposta, basta responder a este documento confirmando os termos e o modelo de pagamento escolhido.")
     add_para(doc, "A partir da confirma��o, o fornecedor enviar� os dados banc�rios e iniciar� o agendamento da instala��o.")
 

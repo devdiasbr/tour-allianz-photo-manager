@@ -198,7 +198,67 @@ Mínimo de cobrança: **1 hora por chamado**.
 
 ---
 
-## 11. Aceite
+## 11. Adendo — Evolução para Plataforma E-commerce de Fotos
+
+Como cortesia ao cliente desta proposta, oferecemos a possibilidade de evoluir a aplicação local atual para uma **plataforma online de venda de fotos**, hospedada em infraestrutura cloud profissional. Esta evolução é opcional e pode ser contratada a qualquer momento dentro de 12 meses após a entrega da aplicação original.
+
+### O que muda
+
+A solução atual (uso interno, instalação local) é transformada em uma plataforma web acessível ao público final, permitindo que os convidados/participantes dos eventos comprem suas próprias fotos diretamente online, sem intermediação manual.
+
+### Funcionalidades adicionais incluídas
+
+- Catálogo público de eventos e álbuns
+- Reconhecimento facial integrado (o visitante envia uma selfie e a plataforma localiza automaticamente todas as fotos em que ele aparece)
+- Carrinho de compras e checkout integrado a gateway de pagamento
+- Painel administrativo para gestão de eventos, preços e relatórios de venda
+- Área do cliente (login do comprador, histórico de pedidos, downloads liberados)
+- Marca d'água automática nas prévias e remoção após pagamento
+- Domínio próprio (`.com.br` a definir pelo cliente, sujeito à disponibilidade no registro.br)
+- Certificado SSL e proteção DDoS básica
+- Layout responsivo para celular, tablet e desktop
+
+### Investimento da evolução
+
+| Item | Valor |
+|---|---|
+| Valor cheio do desenvolvimento da plataforma | R$ 15.000,00 |
+| Desconto promocional (15%) | − R$ 2.250,00 |
+| Crédito da implantação atual (Cláusula 10) | − R$ 6.500,00 |
+| **Saldo a pagar pela evolução** | **R$ 6.250,00** |
+
+**Forma de pagamento do saldo:** 50% na assinatura do adendo + 50% na entrega da plataforma.
+
+### Mensalidade após o go-live
+
+A plataforma online exige hospedagem cloud, monitoramento e suporte contínuos. O cliente escolhe entre dois planos:
+
+| | **Essencial** | **Completo** ⭐ |
+|---|---|---|
+| Mensalidade | **R$ 700/mês** | **R$ 1.000/mês** |
+| Infraestrutura cloud gerenciada | ✓ | ✓ |
+| Backups automáticos diários | ✓ | ✓ |
+| Domínio `.com.br` (renovação anual) | ✓ | ✓ |
+| Certificado SSL | ✓ | ✓ |
+| Monitoramento 24/7 com alertas | ✓ | ✓ |
+| Atualizações de segurança e bibliotecas | ✓ | ✓ |
+| Horas de suporte mensal incluídas | 2h | 4h |
+| **SLA de resposta** | 24h úteis | **8h úteis** |
+| Hora excedente de suporte | R$ 180,00/h | R$ 150,00/h |
+
+A mensalidade é cobrada a partir do mês seguinte ao go-live da plataforma. Custos extras de cloud (storage acima de 200 GB ou egress acima de 300 GB/mês) são repassados ao custo, mediante aviso prévio.
+
+### Prazo de desenvolvimento
+
+A evolução tem prazo estimado de **45 a 60 dias úteis** entre a assinatura do adendo e o go-live, sujeito a validações de design e homologação com o cliente.
+
+### Validade desta oferta
+
+Este adendo é válido **por 12 meses** a partir da data de assinatura da proposta principal. Após esse prazo, valores e condições estão sujeitos a revisão.
+
+---
+
+## 12. Aceite
 
 Para aceitar esta proposta, basta responder a este documento confirmando os termos e o modelo de pagamento escolhido.
 
@@ -206,7 +266,7 @@ A partir da confirmação, o fornecedor enviará os dados bancários e iniciará
 
 ---
 
-## 12. Contato do Fornecedor
+## 13. Contato do Fornecedor
 
 **Bruno Dias**
 CPF: 414.078.848-83
