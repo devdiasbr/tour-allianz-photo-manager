@@ -234,6 +234,16 @@
   display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--space-3); padding: var(--space-4);
 }
+.photo-grid .empty-state,
+.preview-grid .empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: .08em;
+}
 
 /* ===== step 3 · print preview ===== */
 #step3 { display: block; }

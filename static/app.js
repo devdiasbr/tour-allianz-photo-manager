@@ -673,7 +673,7 @@
             if (countEl) countEl.textContent = selectedPhotos.size;
 
             if (matchResults.length === 0) {
-                grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim);width:100%">Nenhuma foto encontrada</div>';
+                grid.innerHTML = '<div class="empty-state">Nenhuma foto encontrada</div>';
                 return;
             }
 
