@@ -13,3 +13,14 @@ button { cursor: pointer; border: 0; background: transparent; padding: 0; }
 .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); }
 .data { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; }
+
+.app-footer {
+  text-align: center;
+  padding: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-fade);
+  border-top: 1px solid var(--border);
+}
+.app-footer a { color: var(--text-dim); text-decoration: none; }
+.app-footer a:hover { color: var(--brand); }
