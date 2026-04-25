@@ -3,7 +3,7 @@ import os
 # Base paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "footer_template")
-DEFAULT_TEMPLATE_NAME = "TEMPLATE PALMEIRAS.png"
+DEFAULT_TEMPLATE_NAME = "TEMPLATE OFICIAL.png"
 TEMPLATE_PATH = os.path.join(TEMPLATES_DIR, DEFAULT_TEMPLATE_NAME)
 UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
 OUTPUT_DIR = os.path.join(BASE_DIR, "output")
