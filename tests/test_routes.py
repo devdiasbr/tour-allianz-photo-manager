@@ -279,7 +279,8 @@ def test_scan_full_lifecycle_with_stubbed_scan(client, existing_session_path):
         # Confidence: (1 - 0.42) * 100 = 58
         assert poll["matches"][0]["confidence"] == 58
         # New shape: thumbnail served by URL, not embedded as base64
-        assert poll["matches"][0]["thumbnail_url"] == "/api/thumbnail/deadbeefcafe.jpg"
+        session_name = os.path.basename(existing_session_path)
+        assert poll["matches"][0]["thumbnail_url"] == f"/api/thumbnail/{session_name}/deadbeefcafe.jpg"
         assert poll["matches"][0]["sha"] == "deadbeefcafe"
         assert "thumbnail" not in poll["matches"][0]
         # match_results stored on session for /api/compose
@@ -359,9 +360,27 @@ def test_thumbnail_endpoint_serves_cached(client, tmp_path, monkeypatch):
     fake_path = str(tmp_path / f"{fake_sha}.jpg")
     Image.new("RGB", (10, 10), (1, 2, 3)).save(fake_path, format="JPEG")
     monkeypatch.setattr(
-        server.encoding_cache, "thumbnail_path", lambda sha: fake_path if sha == fake_sha else "/nope"
+        server.encoding_cache,
+        "resolve_thumbnail_path",
+        lambda sha, session_name=None: fake_path if sha == fake_sha else "/nope",
     )
     r = client.get(f"/api/thumbnail/{fake_sha}.jpg")
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("image/jpeg")
     assert "max-age" in r.headers.get("cache-control", "")
+
+
+def test_thumbnail_endpoint_serves_cached_from_session_subdir(client, tmp_path, monkeypatch):
+    fake_sha = "abc123def456"
+    fake_session = "evento-a"
+    fake_path = str(tmp_path / fake_session / f"{fake_sha}.jpg")
+    os.makedirs(os.path.dirname(fake_path), exist_ok=True)
+    Image.new("RGB", (10, 10), (1, 2, 3)).save(fake_path, format="JPEG")
+    monkeypatch.setattr(
+        server.encoding_cache,
+        "resolve_thumbnail_path",
+        lambda sha, session_name=None: fake_path if (sha == fake_sha and session_name == fake_session) else "/nope",
+    )
+    r = client.get(f"/api/thumbnail/{fake_session}/{fake_sha}.jpg")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("image/jpeg")

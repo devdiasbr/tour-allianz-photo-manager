@@ -403,6 +403,7 @@ def scan_session(
 
     results: list[MatchResult] = []
     cache_hits = {"n": 0}
+    session_name = os.path.basename(os.path.normpath(session_path))
 
     def _consume(photo_path: str, payload: dict, done_n: int) -> None:
         if not payload["ok"]:
@@ -434,7 +435,7 @@ def scan_session(
 
         if matched:
             try:
-                encoding_cache.write_thumbnail(sha12, photo_path)
+                encoding_cache.write_thumbnail(sha12, photo_path, session_name=session_name)
             except Exception:
                 log.warning(f"thumbnail write failed for {os.path.basename(photo_path)}", exc_info=True)
             results.append(MatchResult(

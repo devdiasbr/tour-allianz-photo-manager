@@ -61,12 +61,15 @@ if exist "server.pid" (
   timeout /t 1 /nobreak >nul
 )
 
-:: Limpa cache e output antes de iniciar
-echo Limpando cache e output anteriores...
-if exist "cache\detections.pkl" del /q "cache\detections.pkl" >nul 2>&1
-if exist "cache\thumbnails" (
-  for /f "usebackq delims=" %%F in (`dir /b /a-d "cache\thumbnails" 2^>nul`) do del /q "cache\thumbnails\%%F" >nul 2>&1
-)
+:: Limpa output antes de iniciar
+:: Cache mantido entre execucoes.
+echo Limpando output anterior...
+:: if exist "cache\detections.pkl" del /q "cache\detections.pkl" >nul 2>&1
+:: Thumbs podem ficar em subpastas por evento dentro de cache\thumbnails.
+:: if exist "cache\thumbnails" (
+::   for /d %%D in ("cache\thumbnails\*") do rmdir /s /q "%%D" >nul 2>&1
+::   for /f "usebackq delims=" %%F in (`dir /b /a-d /s "cache\thumbnails" 2^>nul`) do del /q "%%F" >nul 2>&1
+:: )
 if exist "output" (
   for /d %%D in ("output\*") do rmdir /s /q "%%D" >nul 2>&1
   for /f "usebackq delims=" %%F in (`dir /b /a-d "output" 2^>nul`) do del /q "output\%%F" >nul 2>&1

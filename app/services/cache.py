@@ -86,17 +86,46 @@ def flush() -> None:
             log.warning(f"cache flush failed (will retry next flush): {e}")
 
 
-def thumbnail_path(sha: str) -> str:
+def _thumbnail_session_name(session_name: str | None = None) -> str | None:
+    if not session_name:
+        return None
+    normalized = os.path.basename(str(session_name).strip().rstrip("\\/"))
+    if not normalized or normalized in (".", ".."):
+        return None
+    return normalized
+
+
+def thumbnail_dir(session_name: str | None = None) -> str:
+    normalized = _thumbnail_session_name(session_name)
+    if not normalized:
+        return THUMBNAILS_DIR
+    return os.path.join(THUMBNAILS_DIR, normalized)
+
+
+def thumbnail_path(sha: str, session_name: str | None = None) -> str:
+    return os.path.join(thumbnail_dir(session_name), f"{sha}.jpg")
+
+
+def legacy_thumbnail_path(sha: str) -> str:
     return os.path.join(THUMBNAILS_DIR, f"{sha}.jpg")
 
 
-def has_thumbnail(sha: str) -> bool:
-    return os.path.isfile(thumbnail_path(sha))
+def resolve_thumbnail_path(sha: str, session_name: str | None = None) -> str:
+    preferred = thumbnail_path(sha, session_name)
+    if os.path.isfile(preferred):
+        return preferred
+    return legacy_thumbnail_path(sha)
 
 
-def write_thumbnail(sha: str, source_image_path: str) -> str:
+def has_thumbnail(sha: str, session_name: str | None = None) -> bool:
+    return os.path.isfile(resolve_thumbnail_path(sha, session_name))
+
+
+def write_thumbnail(sha: str, source_image_path: str, session_name: str | None = None) -> str:
     """Generate (if missing) and write a JPEG thumbnail for the given file. Returns its path."""
-    out = thumbnail_path(sha)
+    out_dir = thumbnail_dir(session_name)
+    os.makedirs(out_dir, exist_ok=True)
+    out = thumbnail_path(sha, session_name)
     if os.path.isfile(out):
         return out
     with Image.open(source_image_path) as img:
@@ -112,8 +141,11 @@ def write_thumbnail(sha: str, source_image_path: str) -> str:
 
 def stats() -> dict:
     _load()
+    thumbnails_cached = 0
+    for _root, _dirs, files in os.walk(THUMBNAILS_DIR):
+        thumbnails_cached += sum(1 for name in files if name.lower().endswith(".jpg"))
     with _lock:
         return {
             "detections_cached": len(_detections),
-            "thumbnails_cached": sum(1 for _ in os.scandir(THUMBNAILS_DIR) if _.is_file()),
+            "thumbnails_cached": thumbnails_cached,
         }
