@@ -35,6 +35,10 @@ if not exist "venv\Scripts\uvicorn.exe" (
 
 set HOST=127.0.0.1
 set PORT=8000
+set DNS_ALIAS=photo-manager
+
+:: Registra DNS local (hosts) se ainda nao existir — requer admin
+call :register_dns
 set "LOG_DIR=logs"
 
 :: Variaveis de configuracao (descomente e ajuste conforme necessario)
@@ -76,7 +80,7 @@ if exist "output" (
 )
 echo.
 
-echo Iniciando servidor em http://%HOST%:%PORT% ...
+echo Iniciando servidor em http://%DNS_ALIAS%:%PORT% (tambem em http://%HOST%:%PORT%) ...
 
 :: Sobe python.exe sem janela. Captura stdout/stderr em arquivo pra ajudar diagnostico.
 powershell -NoProfile -Command "$p = Start-Process -FilePath '.\venv\Scripts\python.exe' -ArgumentList '-m','uvicorn','server:app','--host','%HOST%','--port','%PORT%' -WindowStyle Hidden -RedirectStandardOutput '.\%LOG_DIR%\server-stdout.log' -RedirectStandardError '.\%LOG_DIR%\server-stderr.log' -PassThru; Set-Content -Path '.\server.pid' -Value $p.Id -Encoding ASCII"
@@ -92,5 +96,28 @@ if errorlevel 1 (
   exit /b 1
 )
 
-start "" "http://%HOST%:%PORT%"
+start "" "http://%DNS_ALIAS%:%PORT%"
+exit /b 0
+
+:register_dns
+set "HOSTS_FILE=%SystemRoot%\System32\drivers\etc\hosts"
+findstr /i /c:"%DNS_ALIAS%" "%HOSTS_FILE%" >nul 2>&1
+if not errorlevel 1 (
+  echo DNS local ja registrado: http://%DNS_ALIAS%:%PORT%
+  exit /b 0
+)
+:: Tenta escrever diretamente (ja admin)
+echo %HOST% %DNS_ALIAS%>>"%HOSTS_FILE%" 2>nul
+if not errorlevel 1 (
+  echo DNS local registrado: http://%DNS_ALIAS%:%PORT%
+  exit /b 0
+)
+:: Eleva via PowerShell
+powershell -NoProfile -Command "Start-Process cmd -ArgumentList '/c echo %HOST% %DNS_ALIAS%>>%HOSTS_FILE%' -Verb RunAs -Wait" >nul 2>&1
+findstr /i /c:"%DNS_ALIAS%" "%HOSTS_FILE%" >nul 2>&1
+if not errorlevel 1 (
+  echo DNS local registrado: http://%DNS_ALIAS%:%PORT%
+) else (
+  echo [AVISO] Nao foi possivel registrar DNS local. Acesse via http://%HOST%:%PORT%
+)
 exit /b 0

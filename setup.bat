@@ -217,6 +217,25 @@ echo Observacao: se a impressao abrir o visualizador em vez de
 echo imprimir, rode docs\fix-print-apply.reg como administrador
 echo (botao direito -^> Mesclar).
 echo.
+
+REM Registra DNS local no hosts
+set "HOSTS_FILE=%SystemRoot%\System32\drivers\etc\hosts"
+set "DNS_ALIAS=photo-manager"
+set "DNS_PORT=8000"
+findstr /i /c:"%DNS_ALIAS%" "%HOSTS_FILE%" >nul 2>&1
+if errorlevel 1 (
+  echo 127.0.0.1 %DNS_ALIAS%>>"%HOSTS_FILE%"
+  if not errorlevel 1 (
+    echo DNS local registrado: http://%DNS_ALIAS%:%DNS_PORT%
+  ) else (
+    echo [AVISO] Nao foi possivel registrar DNS local automaticamente.
+    echo         Adicione manualmente ao hosts: 127.0.0.1 %DNS_ALIAS%
+  )
+) else (
+  echo DNS local ja registrado: http://%DNS_ALIAS%:%DNS_PORT%
+)
+
+echo.
 echo Iniciando a aplicacao...
 call start.bat
 set "START_EXIT=%ERRORLEVEL%"
