@@ -22,11 +22,11 @@ CONTAIN_BACKGROUND_BLUR_DIVISOR = 28
 
 def _detect_footer_start(template: Image.Image) -> int:
     width, height = template.size
-    for y in range(height):
+    for y in range(height - 1, -1, -1):
         row = template.crop((0, y, width, y + 1))
-        if row.getbbox() is not None:
-            return y
-    return height
+        if row.getbbox() is None:
+            return y + 1
+    return 0
 
 
 def _template_label(filename: str) -> str:
