@@ -124,7 +124,7 @@
         // === FOLDER PICKER ===
         const RECENT_KEY = 'recentFolders';
         const BOOT_KEY   = 'serverBootId';
-        const MAX_RECENT = 5;
+        const MAX_RECENT = 10;
 
         async function clearRecentsOnRestart() {
             try {
