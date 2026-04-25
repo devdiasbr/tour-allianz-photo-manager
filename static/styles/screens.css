@@ -189,20 +189,21 @@
 /* ===== step 2 · grid ===== */
 #step2 { display: block; }
 .compose-settings {
-  display: grid;
-  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  display: flex;
+  flex-direction: row;
   gap: var(--space-4);
-  align-items: center;
-  padding: 14px var(--space-4);
+  align-items: end;
+  padding: 12px var(--space-4) 14px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
 .compose-field {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 6px;
+  align-content: end;
   min-width: 0;
-  max-width: 320px;
+  width: 220px;
+  flex-shrink: 0;
 }
 .compose-field-label {
   font-family: 'JetBrains Mono', monospace;
@@ -211,35 +212,13 @@
   text-transform: uppercase;
   color: var(--text-dim);
 }
-.compose-template-meta {
-  display: flex;
-  gap: var(--space-3);
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  min-height: 44px;
-  align-items: center;
-  align-content: center;
-  padding-left: var(--space-4);
-  border-left: 1px solid var(--border);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-dim);
-}
-.compose-meta-tag {
-  color: var(--text-strong);
-  border: 1px solid var(--border-strong);
-  background: var(--bg);
-  padding: 6px 10px;
-}
 @media (max-width: 980px) {
   .compose-settings {
-    grid-template-columns: 1fr;
+    flex-wrap: wrap;
   }
 
-  .compose-template-meta {
-    justify-content: flex-start;
-    padding-left: 0;
-    border-left: 0;
+  .compose-field {
+    width: 160px;
   }
 }
 .scan-bar {

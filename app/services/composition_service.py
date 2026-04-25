@@ -58,12 +58,24 @@ def _template_spec_from_path(path: Path) -> dict:
 
 
 def list_templates() -> list[dict]:
-    path = _default_template_path()
-    if not path.exists():
-        raise ValueError(f"Template padrao nao encontrado: {DEFAULT_TEMPLATE_NAME}")
-    if path.suffix.lower() not in SUPPORTED_TEMPLATE_EXTS:
-        raise ValueError(f"Template padrao invalido: {DEFAULT_TEMPLATE_NAME}")
-    return [_template_spec_from_path(path)]
+    templates_dir = Path(TEMPLATES_DIR)
+    if not templates_dir.exists():
+        raise ValueError(f"Pasta de templates nao encontrada: {TEMPLATES_DIR}")
+
+    paths = sorted(
+        p for p in templates_dir.iterdir()
+        if p.is_file() and p.suffix.lower() in SUPPORTED_TEMPLATE_EXTS
+    )
+    if not paths:
+        raise ValueError(f"Nenhum template encontrado em: {TEMPLATES_DIR}")
+
+    default_path = Path(TEMPLATES_DIR) / DEFAULT_TEMPLATE_NAME
+    specs = []
+    for path in paths:
+        spec = _template_spec_from_path(path)
+        spec["is_default"] = path.resolve() == default_path.resolve()
+        specs.append(spec)
+    return specs
 
 
 def get_template_spec(template_name: str | None = None) -> dict:
@@ -72,9 +84,11 @@ def get_template_spec(template_name: str | None = None) -> dict:
         raise ValueError("Nenhum template disponivel em footer_template/")
 
     if template_name:
-        if template_name != DEFAULT_TEMPLATE_NAME:
+        match = next((t for t in templates if t["name"] == template_name), None)
+        if match is None:
             raise ValueError(f"Template invalido: {template_name}")
-    return templates[0]
+        return match
+    return next((t for t in templates if t["is_default"]), templates[0])
 
 
 def _vertical_offset(container_h: int, content_h: int, vertical_align: str) -> int:
@@ -173,9 +187,13 @@ def compose_photo(
 
 
 def template_path(template_name: str | None = None) -> str:
-    if template_name and template_name != DEFAULT_TEMPLATE_NAME:
+    if not template_name:
+        return os.path.join(TEMPLATES_DIR, DEFAULT_TEMPLATE_NAME)
+    templates = list_templates()
+    match = next((t for t in templates if t["name"] == template_name), None)
+    if match is None:
         raise ValueError(f"Template invalido: {template_name}")
-    return os.path.join(TEMPLATES_DIR, DEFAULT_TEMPLATE_NAME)
+    return os.path.join(TEMPLATES_DIR, template_name)
 
 
 def save_composed(

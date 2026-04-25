@@ -299,31 +299,16 @@
             renderRecent();
         }
 
-        function currentComposeTemplate() {
-            return composeTemplates.find(t => t.name === composeSettings.templateName) || composeTemplates[0] || null;
-        }
-
-        function renderComposeTemplateMeta() {
-            const meta = document.getElementById('composeTemplateMeta');
-            if (!meta) return;
-            const template = currentComposeTemplate();
-            if (!template) {
-                meta.textContent = 'Nenhum template disponivel';
-                return;
-            }
-            meta.innerHTML = `
-                <span class="compose-meta-tag">Template ${template.label}</span>
-                <span>${template.width} x ${template.height}</span>
-                <span>area da foto ${template.width} x ${template.photo_area_height}</span>
-                <span>alinhamento topo</span>
-                <span>${template.dpi[0]} dpi</span>
-            `;
-        }
-
         function syncComposeControls() {
             const fitSelect = document.getElementById('composeFit');
             if (fitSelect) fitSelect.value = composeSettings.fitMode;
-            renderComposeTemplateMeta();
+
+            const tplSelect = document.getElementById('composeTemplate');
+            if (tplSelect) {
+                tplSelect.innerHTML = composeTemplates.map(t =>
+                    `<option value="${t.name}"${t.name === composeSettings.templateName ? ' selected' : ''}>${t.label}</option>`
+                ).join('');
+            }
         }
 
         async function initComposeSettings() {
@@ -332,8 +317,14 @@
 
             fitSelect.onchange = () => {
                 composeSettings.fitMode = fitSelect.value;
-                renderComposeTemplateMeta();
             };
+
+            const tplSelect = document.getElementById('composeTemplate');
+            if (tplSelect) {
+                tplSelect.onchange = () => {
+                    composeSettings.templateName = tplSelect.value;
+                };
+            }
 
             try {
                 const res = await fetch('/api/compose/options');
@@ -349,7 +340,7 @@
                 syncComposeControls();
             } catch (err) {
                 composeTemplates = [];
-                document.getElementById('composeTemplateMeta').textContent = err.message;
+                console.error('initComposeSettings failed:', err.message);
             }
         }
 
@@ -424,6 +415,46 @@
             chip.dataset.idx = idx;
             chip.innerHTML = `<img src="${imgSrc}" alt=""><button class="rm" onclick="removeFaceChip(${idx})" title="Remover">×</button>`;
             container.appendChild(chip);
+        }
+
+        async function browseAndUpload() {
+            try {
+                const res = await fetch('/api/browse-file');
+                const data = await res.json();
+                if (!data.ok || !data.paths || data.paths.length === 0) return;
+                await uploadPaths(data.paths);
+            } catch (err) {
+                // fallback to browser file picker
+                document.getElementById('fileUpload').click();
+            }
+        }
+
+        async function uploadPaths(paths) {
+            let loadingToken = null;
+            try {
+                loadingToken = showLoading('Detectando rostos...');
+                const res = await fetch('/api/face/capture-paths', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({paths}),
+                });
+                const data = await res.json();
+                for (const r of data.results || []) {
+                    if (r.ok) {
+                        capturedCount = r.total_references;
+                        document.getElementById('faceCount').textContent = capturedCount;
+                        document.getElementById('btnSearch').disabled = false;
+                        addFaceChip(`/api/photo?filename=${encodeURIComponent(r.path.split(/[\\/]/).pop())}`);
+                        showSnackbar(`${r.faces_count} rosto(s) detectado(s)!`);
+                    } else {
+                        showSnackbar(r.message || 'Nenhum rosto detectado');
+                    }
+                }
+            } catch (err) {
+                showSnackbar('Erro ao processar foto: ' + err.message);
+            } finally {
+                hideLoading(loadingToken);
+            }
         }
 
         async function uploadPhotos(files) {
@@ -732,19 +763,27 @@
         async function printAll() {
             try {
                 console.log('[print] sending files:', composedFiles);
-                const data = await requestJson('/api/print', {
+                const res = await fetch('/api/print', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({files: composedFiles})
-                }, { text: 'Enviando para impressão...' });
+                });
+                const data = await res.json().catch(() => ({}));
                 console.log('[print] server response:', data);
+                if (!res.ok) {
+                    const msg = data.message || `HTTP ${res.status}`;
+                    const detail = data.detail || '';
+                    console.error('[print] error detail:', detail);
+                    showSnackbar('Erro ao imprimir: ' + msg);
+                    return;
+                }
                 if (data.printed > 0) {
                     showSnackbar(`${data.printed} foto(s) prontas no diálogo — escolha impressora e cópias e clique em Imprimir`);
                 } else {
                     showSnackbar(data.message || 'Nada foi enviado para impressão.');
                 }
             } catch (err) {
-                showSnackbar('Erro: ' + err.message);
+                showSnackbar('Erro ao imprimir: ' + err.message);
             }
         }
 

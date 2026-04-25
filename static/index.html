@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tour Allianz Parque - Photo Manager</title>
-    <link rel="stylesheet" href="/static/styles/tokens.css?v=20260423c">
-    <link rel="stylesheet" href="/static/styles/base.css?v=20260423c">
-    <link rel="stylesheet" href="/static/styles/components.css?v=20260423c">
-    <link rel="stylesheet" href="/static/styles/screens.css?v=20260423c">
-    <link rel="stylesheet" href="/static/styles/overlays.css?v=20260423c">
+    <link rel="stylesheet" href="/static/styles/tokens.css?v=20260425b">
+    <link rel="stylesheet" href="/static/styles/base.css?v=20260425b">
+    <link rel="stylesheet" href="/static/styles/components.css?v=20260425b">
+    <link rel="stylesheet" href="/static/styles/screens.css?v=20260425b">
+    <link rel="stylesheet" href="/static/styles/overlays.css?v=20260425b">
     <script src="/static/theme.js"></script>
 </head>
 <body>
@@ -74,11 +74,11 @@
                 <button class="btn btn-primary" id="btnCapture" onclick="captureFrame()">
                     <svg><use href="#i-camera"/></svg>Capturar Rosto
                 </button>
-                <label class="btn btn-secondary" style="cursor:pointer">
+                <button class="btn btn-secondary" onclick="browseAndUpload()">
                     <svg><use href="#i-upload"/></svg>Enviar Foto
-                    <input type="file" id="fileUpload" accept="image/*" multiple
-                           onchange="uploadPhotos(this.files)" style="display:none">
-                </label>
+                </button>
+                <input type="file" id="fileUpload" accept="image/*" multiple
+                       onchange="uploadPhotos(this.files)" style="display:none">
             </div>
         </div>
         <aside class="side-col">
@@ -99,6 +99,19 @@
 
     <!-- Step 2: Photo Grid -->
     <div id="step2" class="content hidden">
+        <div class="compose-settings">
+            <div class="compose-field">
+                <span class="compose-field-label">Ajuste da foto</span>
+                <select id="composeFit" class="input input-mono">
+                    <option value="contain">Foto inteira</option>
+                    <option value="cover">Preencher recortando</option>
+                </select>
+            </div>
+            <div class="compose-field">
+                <span class="compose-field-label">Template</span>
+                <select id="composeTemplate" class="input input-mono"></select>
+            </div>
+        </div>
         <div class="toolbar">
             <button class="btn btn-ghost" onclick="goToStep(1)">
                 <svg><use href="#i-arrow-left"/></svg>Voltar
@@ -112,16 +125,6 @@
             <button class="btn btn-primary" onclick="composeSelected()">
                 <svg><use href="#i-print"/></svg>Compor e Imprimir
             </button>
-        </div>
-        <div class="compose-settings">
-            <div class="compose-field">
-                <span class="compose-field-label">Ajuste da foto</span>
-                <select id="composeFit" class="input input-mono">
-                    <option value="contain">Foto inteira</option>
-                    <option value="cover">Preencher recortando</option>
-                </select>
-            </div>
-            <div class="compose-template-meta" id="composeTemplateMeta"></div>
         </div>
         <div class="scan-bar hidden" id="scanProgress">
             <span>scanning <b id="scanText">0/0</b></span>
@@ -203,7 +206,7 @@
         <div class="carousel-info" id="carouselInfo"></div>
     </div>
 
-    <script type="module" src="/static/face-detection.js?v=20260423c"></script>
-    <script src="/static/app.js?v=20260423c"></script>
+    <script type="module" src="/static/face-detection.js?v=20260425b"></script>
+    <script src="/static/app.js?v=20260425b"></script>
 </body>
 </html>

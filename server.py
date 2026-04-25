@@ -7,6 +7,7 @@ import hashlib
 import logging
 import re
 import threading
+from urllib.parse import quote
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
@@ -201,7 +202,7 @@ def _run_scan_job(job_id: str, sid: str, session_path: str, encodings: list) -> 
             job["total"] = total
 
         results = face_service.scan_session(session_path, encodings, progress_callback=cb)
-        matches = _build_local_matches(results)
+        matches = _build_local_matches(results, session_path=session_path)
 
         if sid in sessions:
             sessions[sid]["match_results"] = results
@@ -219,6 +220,10 @@ def _run_scan_job(job_id: str, sid: str, session_path: str, encodings: list) -> 
 # ---------- Pydantic request models ----------
 class SelectSessionRequest(BaseModel):
     path: str = Field(..., min_length=1)
+
+
+class CapturePathRequest(BaseModel):
+    paths: list[str] = Field(default_factory=list)
 
 
 class ComposeRequest(BaseModel):
@@ -269,14 +274,29 @@ def _fix_orientation(img: Image.Image) -> Image.Image:
     return img
 
 
-def _build_local_matches(results):
+def _session_name_from_path(session_path: str | None) -> str | None:
+    if not session_path:
+        return None
+    normalized = os.path.basename(session_path.rstrip("\\/"))
+    return normalized or None
+
+
+def _thumbnail_url(sha: str, session_name: str | None = None) -> str:
+    if session_name:
+        return f"/api/thumbnail/{quote(session_name)}/{sha}.jpg"
+    return f"/api/thumbnail/{sha}.jpg"
+
+
+def _build_local_matches(results, session_path: str | None = None):
+    session_name = _session_name_from_path(session_path)
     matches = []
     for r in results:
         confidence = max(0, min(100, int((1 - r.best_distance) * 100)))
+        match_session_name = session_name or _session_name_from_path(os.path.dirname(r.file_path))
         matches.append({
             "file_path": r.file_path,
             "filename": os.path.basename(r.file_path),
-            "thumbnail_url": f"/api/thumbnail/{r.sha}.jpg",
+            "thumbnail_url": _thumbnail_url(r.sha, match_session_name),
             "sha": r.sha,
             "confidence": confidence,
         })
@@ -368,6 +388,39 @@ async def select_session(req: SelectSessionRequest):
             {"ok": False, "message": f"Erro ao selecionar sessão: {e}"},
             status_code=500,
         )
+
+
+@app.get("/api/browse-file")
+async def browse_file():
+    """Open a native OS file picker starting in the current session folder."""
+    state = get_state()
+    initial_dir = state.get("session_path") or os.path.expanduser("~")
+
+    result = {"paths": []}
+    ready = threading.Event()
+
+    def open_dialog():
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        paths = filedialog.askopenfilenames(
+            title="Selecionar foto(s) de referência",
+            initialdir=initial_dir,
+            filetypes=[("Imagens", "*.jpg *.jpeg *.png"), ("Todos", "*.*")],
+        )
+        root.destroy()
+        result["paths"] = list(paths) if paths else []
+        ready.set()
+
+    t = threading.Thread(target=open_dialog, daemon=True)
+    t.start()
+    ready.wait(timeout=120)
+
+    if not result["paths"]:
+        return {"ok": False, "paths": []}
+    return {"ok": True, "paths": result["paths"]}
 
 
 @app.get("/api/browse-folder")
@@ -467,6 +520,49 @@ async def capture_face(file: UploadFile = File(...)):
         )
 
 
+@app.post("/api/face/capture-paths")
+async def capture_face_paths(req: CapturePathRequest):
+    """Process local file paths returned by the native file picker."""
+    results = []
+    state = get_state()
+    for path in req.paths:
+        if not path or not os.path.isfile(path):
+            results.append({"ok": False, "path": path, "message": "Arquivo não encontrado"})
+            continue
+        if not path.lower().endswith((".jpg", ".jpeg", ".png")):
+            results.append({"ok": False, "path": path, "message": "Formato não suportado"})
+            continue
+        try:
+            with open(path, "rb") as fh:
+                contents = fh.read()
+            if len(contents) > MAX_UPLOAD_BYTES:
+                results.append({"ok": False, "path": path, "message": "Arquivo muito grande"})
+                continue
+            raw_img = Image.open(io.BytesIO(contents))
+            img = raw_img.convert("RGB")
+            img = _fix_orientation(img)
+            img_array = np.array(img)
+            encodings = face_service.encode_faces(img_array)
+            if not encodings:
+                results.append({"ok": False, "path": path, "message": "Nenhum rosto detectado"})
+                continue
+            for enc in encodings:
+                state["reference_encodings"].append(enc)
+            locations = face_service.get_face_locations(img_array)
+            face_rects = [{"top": t, "right": r, "bottom": b, "left": l} for t, r, b, l in locations]
+            results.append({
+                "ok": True,
+                "path": path,
+                "faces_count": len(encodings),
+                "total_references": len(state["reference_encodings"]),
+                "face_rects": face_rects,
+            })
+        except Exception as e:
+            log.exception(f"capture_face_paths failed for {path}")
+            results.append({"ok": False, "path": path, "message": str(e)})
+    return {"ok": True, "results": results}
+
+
 @app.post("/api/face/clear")
 async def clear_faces():
     """Clear all reference face encodings."""
@@ -555,12 +651,12 @@ async def get_session_photo(filename: str = ""):
     return FileResponse(candidate, media_type=media)
 
 
-@app.get("/api/thumbnail/{sha}.jpg")
-async def get_thumbnail(sha: str):
-    """Serve a cached thumbnail by sha. Long browser cache since contents are immutable."""
+def _serve_thumbnail(sha: str, session_name: str | None = None):
     if not sha or not sha.isalnum() or len(sha) > 64:
         return JSONResponse({"error": "Invalid sha"}, status_code=400)
-    path = encoding_cache.thumbnail_path(sha)
+    if session_name and (session_name in (".", "..") or "/" in session_name or "\\" in session_name):
+        return JSONResponse({"error": "Invalid session"}, status_code=400)
+    path = encoding_cache.resolve_thumbnail_path(sha, session_name=session_name)
     if not os.path.isfile(path):
         return JSONResponse({"error": "Not found"}, status_code=404)
     return FileResponse(
@@ -568,6 +664,18 @@ async def get_thumbnail(sha: str):
         media_type="image/jpeg",
         headers={"Cache-Control": "public, max-age=86400, immutable"},
     )
+
+
+@app.get("/api/thumbnail/{session_name}/{sha}.jpg")
+async def get_thumbnail_by_session(session_name: str, sha: str):
+    """Serve a cached thumbnail in a per-session subfolder, with legacy fallback."""
+    return _serve_thumbnail(sha, session_name=session_name)
+
+
+@app.get("/api/thumbnail/{sha}.jpg")
+async def get_thumbnail(sha: str):
+    """Serve a cached thumbnail by sha. Long browser cache since contents are immutable."""
+    return _serve_thumbnail(sha)
 
 
 @app.post("/api/compose")
@@ -723,25 +831,36 @@ async def print_photos(req: PrintRequest):
                 except Exception:
                     pass
 
+        opened = False
         try:
             win32api.ShellExecute(0, "print", pdf_path, None, ".", win32con.SW_SHOWNORMAL)
+            opened = True
         except Exception as e:
-            log.exception("ShellExecute 'print' failed on PDF bundle")
-            return JSONResponse(
-                {"ok": False,
-                 "message": (
-                     "Falha ao abrir o diálogo de impressão. Verifique se há um "
-                     f"app padrão associado a .pdf. Detalhe: {e}"
-                 )},
-                status_code=500,
-            )
+            log.warning(f"ShellExecute 'print' failed: {e} — falling back to 'open'")
+
+        if not opened:
+            try:
+                win32api.ShellExecute(0, "open", pdf_path, None, ".", win32con.SW_SHOWNORMAL)
+                opened = True
+            except Exception as e2:
+                log.exception("ShellExecute 'open' also failed on PDF bundle")
+                return JSONResponse(
+                    {"ok": False,
+                     "message": (
+                         "Falha ao abrir o diálogo de impressão. Verifique se há um "
+                         f"app padrão associado a .pdf. Detalhe: {e2}"
+                     )},
+                    status_code=500,
+                )
 
         log.info(f"Print dialog opened for bundled PDF with {len(valid_paths)} page(s) -> {pdf_path} (printer={printer!r})")
         return {"ok": True, "printed": len(valid_paths), "printer": printer, "bundle": pdf_path}
     except Exception as e:
+        import traceback
+        detail = traceback.format_exc()
         log.exception("print_photos failed")
         return JSONResponse(
-            {"ok": False, "message": f"Erro ao preparar impressão: {e}"},
+            {"ok": False, "message": f"Erro ao preparar impressão: {e}", "detail": detail},
             status_code=500,
         )
 
