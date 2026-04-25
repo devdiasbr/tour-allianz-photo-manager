@@ -17,7 +17,8 @@ button { cursor: pointer; border: 0; background: transparent; padding: 0; }
 .app-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 10px;
   padding: 10px 20px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
@@ -26,14 +27,11 @@ button { cursor: pointer; border: 0; background: transparent; padding: 0; }
   border-top: 1px solid var(--border);
   background: var(--surface);
 }
-.app-footer-links {
-  display: flex;
-  gap: 16px;
-}
+.app-footer-sep { color: var(--border-strong); }
 .app-footer a {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   color: var(--text-dim);
   text-decoration: none;
   transition: color .15s;
