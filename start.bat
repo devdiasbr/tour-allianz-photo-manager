@@ -35,7 +35,7 @@ if not exist "venv\Scripts\uvicorn.exe" (
 
 set HOST=127.0.0.1
 set PORT=8000
-set DNS_ALIAS=photo-manager.local
+set DNS_ALIAS=%HOST%
 set "LOG_DIR=logs"
 
 :: Variaveis de configuracao (descomente e ajuste conforme necessario)
@@ -77,7 +77,7 @@ if exist "output" (
 )
 echo.
 
-echo Iniciando servidor em http://%DNS_ALIAS%:%PORT% (tambem em http://%HOST%:%PORT%) ...
+echo Iniciando servidor em http://%HOST%:%PORT% ...
 
 :: Sobe python.exe sem janela. Captura stdout/stderr em arquivo pra ajudar diagnostico.
 powershell -NoProfile -Command "$p = Start-Process -FilePath '.\venv\Scripts\python.exe' -ArgumentList '-m','uvicorn','server:app','--host','%HOST%','--port','%PORT%' -WindowStyle Hidden -RedirectStandardOutput '.\%LOG_DIR%\server-stdout.log' -RedirectStandardError '.\%LOG_DIR%\server-stderr.log' -PassThru; Set-Content -Path '.\server.pid' -Value $p.Id -Encoding ASCII"
@@ -93,5 +93,5 @@ if errorlevel 1 (
   exit /b 1
 )
 
-start "" "http://%DNS_ALIAS%:%PORT%"
+start "" "http://%HOST%:%PORT%"
 exit /b 0
